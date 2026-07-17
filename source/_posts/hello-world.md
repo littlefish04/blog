@@ -1,38 +1,268 @@
+﻿---
+title: 如何用Hexo写博客
+date: 2026-07-17 19:20:00
+tags:
+  - Markdown
+  - Hexo
+categories:
+  - 学习记录
+cover: /images/cover.jpg
+description: 包含了博客元数据头部的介绍，Markdown 基本语法，一个方便的 Hexo 插件的使用方法，在博客里插入图片的方法，以及快速配置主题的方法。
 ---
-title: Hello World
+
 ---
-Welcome to [Hexo](https://hexo.io/)! This is your very first post. Check [documentation](https://hexo.io/docs/) for more info. If you get any problems when using Hexo, you can find the answer in [troubleshooting](https://hexo.io/docs/troubleshooting.html) or you can ask me on [GitHub](https://github.com/hexojs/hexo/issues).
+> 大部分内容是ai回答，自己手动总结排版了一下。如有错误恳请指出
 
-## Quick Start
+## 一、 博客撰写语法
 
-### Create a new post
+### 1. Front Matter（元数据头部）
 
-``` bash
-$ hexo new "My New Post"
+大多数博客系统（Hexo、Hugo、Jekyll 等）都使用 **Front Matter** 来定义文章属性：
+
+```yaml
+---
+title: 文章标题
+date: 2026-07-17 14:30:00
+updated: 2026-07-17 15:00:00
+tags:
+  - Markdown
+  - 博客
+  - 教程
+categories:
+  - 技术分享
+cover: /images/cover.jpg
+description: 这是一篇关于如何写博客文章的介绍
+---
 ```
 
-More info: [Writing](https://hexo.io/docs/writing.html)
+**常用的 Front Matter 字段**：
 
-### Run server
+| 字段 | 说明 | 是否必须 |
+|------|------|---------|
+| `title` | 文章标题 | ✅ 必须 |
+| `date` | 创建日期 | ✅ 必须 |
+| `updated` | 更新日期 | 可选 |
+| `tags` | 标签（数组） | 可选 |
+| `categories` | 分类（数组） | 可选 |
+| `cover` | 封面图 | 可选 |
+| `description` | 文章简介 | 可选 |
+| `draft` | 是否为草稿（true/false） | 可选 |
+| `author` | 作者 | 可选 |
 
-``` bash
-$ hexo server
+---
+
+### 2. Markdown基础语法
+
+> 本人是使用.md撰写博客的，故记录一下Markdown语法
+
+#### 1. 标题
+
+```markdown
+# 一级标题（不推荐在正文中使用，留给文章标题）
+
+## 二级标题（主要章节）
+
+### 三级标题（子章节）
+
+#### 四级标题（小节）
+
+正文内容...
 ```
 
-More info: [Server](https://hexo.io/docs/server.html)
+**建议**：
+- 从 `##` 开始用，因为 `#` 通常和文章标题重复
+- 层级不超过 4 级，保持清晰
 
-### Generate static files
 
-``` bash
-$ hexo generate
+#### 2. 段落和换行
+```markdown
+这是第一段内容。段落之间用空行分隔。
+
+这是第二段内容。  
+行尾加两个空格可以实现换行（不常用）。
 ```
 
-More info: [Generating](https://hexo.io/docs/generating.html)
+#### 3. 强调
+```markdown
+*斜体* 或 _斜体_
+**粗体** 或 __粗体__
+***粗斜体*** 或 ___粗斜体___
+~~删除线~~
+`行内代码`
+```
+实际显示效果：  
 
-### Deploy to remote sites
+*斜体*   
+**粗体**  
+***粗斜体***  
+~~删除线~~  
+`行内代码`
 
-``` bash
-$ hexo deploy
+
+#### 4. 列表
+```markdown
+# 无序列表
+- 项目1
+- 项目2
+  - 子项目2.1
+  - 子项目2.2
+
+# 有序列表
+1. 第一步
+2. 第二步
+   1. 子步骤2.1
+   2. 子步骤2.2
+3. 第三步
+```
+实际显示效果：  
+- 项目1
+- 项目2
+  - 子项目2.1
+  - 子项目2.2
+
+1. 第一步
+2. 第二步
+   1. 子步骤2.1
+   2. 子步骤2.2
+3. 第三步
+
+#### 5. 链接
+```markdown
+# 链接
+[显示文字](https://example.com "可选的标题")
+```
+实际显示效果是这样的：[显示文字](https://example.com "可选的标题")
+
+#### 6. 引用
+```markdown
+> 这是一段引用内容
+> 可以有多行
+>> 还可以嵌套引用
+```
+实际效果：  
+> 这是一段引用内容  
+> 可以有多行
+>> 还可以嵌套引用
+
+#### 7. 代码块
+````markdown
+# 单行代码
+`console.log('hello')`
+
+# 多行代码（指定语言）
+```javascript
+function hello() {
+    console.log('Hello World!');
+}
 ```
 
-More info: [Deployment](https://hexo.io/docs/one-command-deployment.html)
+# 多行代码（不指定语言）
+```
+这是纯文本代码块
+```
+````
+
+#### 8. 表格
+```markdown
+| 列1 | 列2 | 列3 |
+|-----|-----|-----|
+| 内容1 | 内容2 | 内容3 |
+| 内容4 | 内容5 | 内容6 |
+```
+实际显示效果：     
+
+| 列1 | 列2 | 列3 |
+|-----|-----|-----|
+| 内容1 | 内容2 | 内容3 |
+| 内容4 | 内容5 | 内容6 |
+
+要和前后的正文分段，不然不会显示表格而是会显示成正文，就像这样：
+| 列1 | 列2 | 列3 |
+|-----|-----|-----|
+| 内容1 | 内容2 | 内容3 |
+| 内容4 | 内容5 | 内容6 |
+
+
+#### 分割线
+```markdown
+---
+或
+***
+```
+
+---
+
+## 二、博客文章排版建议
+
+### 文章结构模板（仅供参考）
+
+```markdown
+---
+title: 文章标题（吸引人、包含关键词）
+date: 2026-07-17
+tags: [标签1, 标签2]
+categories: 分类名称
+---
+
+## 标题1
+
+### 要点1
+
+...
+
+## 标题2
+
+...
+
+## 参考资源（可选）
+
+- [参考链接1](url)
+- [参考链接2](url)
+```
+
+---
+
+## 三、Hexo 自动生成标签插件
+
+> Front Matter 里的date自己写起来太麻烦了，所以去找了插件，自动生成岂不美哉
+
+### 施工中
+
+```markdown
+# 插入代码（带文件路径）
+{% codeblock 文件路径 lang:javascript %}
+console.log('hello');
+{% endcodeblock %}
+
+# 插入图片（带尺寸）
+{% img /images/photo.jpg 800 600 '"图片描述"' %}
+
+# 插入引用（带来源）
+{% blockquote 来源名称, 来源链接 %}
+引用内容
+{% endblockquote %}
+
+# 折叠内容
+<details>
+<summary>点击展开</summary>
+这里是折叠的内容...
+</details>
+```
+
+---
+
+## 四、如何在博客里插入图片
+
+施工中
+
+---
+
+## 五、快速配置主题
+
+施工中
+
+---
+## 参考资源
+
+- [参考链接1](url)
+- [参考链接2](url)

@@ -13,7 +13,8 @@ timezone: 'Asia/Shanghai'
 
 # URL
 ## Set your site url here. For example, if you use GitHub Page, set url as 'https://username.github.io/project'
-url: http://littlefish04.github.io/project
+url: http://littlefish04.github.io/blog
+root: /blog/
 permalink: :year/:month/:day/:title/
 permalink_defaults:
 pretty_urls:
@@ -104,3 +105,14 @@ deploy:
   type: 'git'
   repo: git@github.com:littlefish04/littlefish04.github.io.git
   branch: gh-pages
+
+# 开启 hexo-auto-front-matter 插件
+auto_front_matter:
+  enable: true
+  # 自动根据文件名生成标题 (当标题为空时)
+  auto_title:
+    enable: true
+    mode: 1
+  # 自动用当前时间生成日期 (当日期为空时)
+  auto_date:
+    enable: true

@@ -1,0 +1,72 @@
+name: Deploy Hexo Site to GitHub Pages
+
+# 触发器：当推送到 master 分支时触发
+on:
+  push:
+    branches:
+      - master  # 你的本地分支是 master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    # 权限设置：需要有写入权限才能推送到 gh-pages 分支
+    permissions:
+      contents: write
+    
+    steps:
+      # 1. 检出代码
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          submodules: true  # 如果你的主题是通过 submodule 引入的，需要这个
+          fetch-depth: 0    # 获取完整历史，便于正确获取提交信息
+      
+      # 2. 设置 Node.js 环境
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'  # 用你本地的 Node 版本，建议用 LTS 版本
+      
+      # 3. 缓存 npm 依赖（加速构建）
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+      
+      # 4. 安装依赖
+      - name: Install dependencies
+        run: npm ci  # npm ci 比 npm install 更快更稳定，适合 CI 环境
+      
+      # 5. 清理（可选）
+      - name: Clean
+        run: npm run clean  # 如果有 clean 脚本的话
+      
+      # 6. 生成静态文件
+      - name: Build Hexo site
+        run: npm run build  # 等同于 hexo generate
+      
+      # 7. 部署到 gh-pages 分支
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          # 推荐使用 github_token（更简单，无需额外配置）
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # 如果要使用 deploy_key，需要先配置 SSH 密钥
+          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          
+          publish_dir: ./public  # Hexo 默认生成目录
+          publish_branch: gh-pages  # 部署目标分支
+          
+          # 以下信息会显示在 gh-pages 分支的提交记录中
+          user_name: 'littlefish04'  # 改成你的 GitHub 用户名
+          user_email: 'littlefish04@163.com'  # 改成你的邮箱
+          commit_message: ${{ github.event.head_commit.message }}
+          full_commit_message: ${{ github.event.head_commit.message }}
+          
+          # 可选配置
+          allow_empty_commit: true  # 允许空提交
+          keep_files: false  # 是否保留 gh-pages 分支上的旧文件（默认 false，会完全替换）
