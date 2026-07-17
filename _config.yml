@@ -111,10 +111,27 @@ deploy:
 # 开启 hexo-auto-front-matter 插件
 auto_front_matter:
   enable: true
+  
   # 自动根据文件名生成标题 (当标题为空时)
   auto_title:
     enable: true
     mode: 1
+  
   # 自动用当前时间生成日期 (当日期为空时)
   auto_date:
     enable: true
+  
+  # 自动生成分类 (从文件目录结构)
+  auto_categories:
+    enable: false
+    depth: 1
+    multiple: false
+  
+  # 自动生成标签
+  auto_tags:
+    enable: false
+  
+  # 自动生成封面
+  auto_cover:
+    enable: false
+    per_category: {}
