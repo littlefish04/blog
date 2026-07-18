@@ -6,7 +6,7 @@
 title: littlefish04的个人博客~
 subtitle: ''
 description: '记录一些学习过程'
-keywords:
+keywords: 博客,littlefish04 blog,littlefish04个人博客
 author: littlefish04
 language: zh
 timezone: 'Asia/Shanghai'
@@ -15,7 +15,10 @@ timezone: 'Asia/Shanghai'
 ## Set your site url here. For example, if you use GitHub Page, set url as 'https://username.github.io/project'
 url: http://littlefish04.github.io/blog
 root: /blog/
-permalink: :year/:month/:day/:title/
+permalink: posts/:abbrlink/
+abbrlink:
+    alg: crc32   #算法： crc16(default) and crc32
+    rep: dec #  dec数字 hex哈希串
 permalink_defaults:
 pretty_urls:
   trailing_index: true # Set to false to remove trailing 'index.html' from permalinks
@@ -41,7 +44,10 @@ external_link:
   exclude: ''
 filename_case: 0
 render_drafts: false
-post_asset_folder: false
+post_asset_folder: true
+marked:
+  prependRoot: true
+  postAsset: true
 relative_link: false
 future: true
 syntax_highlighter: highlight.js
@@ -135,3 +141,10 @@ auto_front_matter:
   auto_cover:
     enable: false
     per_category: {}
+
+nofollow:
+  enable: true
+  field: site
+  exclude:
+    - 'exclude1.com'
+    - 'exclude2.com'
