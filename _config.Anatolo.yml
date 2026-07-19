@@ -89,17 +89,17 @@ valine:
   avatar: mm # avatar style https://github.com/xCss/Valine/wiki/avatar-setting-for-valine
   placeholder: hello, world # comment box placeholder
 gitment:
-  enable: true
+  enable: false
   owner: 'littlefish04'
   repo: 'Gitment-repo'
   client_id: 'Ov23liQvODT8ulenZPgL'
   client_secret: 'a89a59e18c2b4bc891a5e47b3d876870f5c6dd7a'
 gitalk:
-  enable: false
-  owner: 'Your GitHub ID'
-  repo: 'Repo to store comments'
-  client_id: 'Your client ID'
-  client_secret: 'Your client secret'
+  enable: true
+  owner: 'littlefish04'
+  repo: 'Gitment-repo'
+  client_id: 'Ov23liQvODT8ulenZPgL'
+  client_secret: 'a89a59e18c2b4bc891a5e47b3d876870f5c6dd7a'
 
 # 百度统计设置
 # 请访问 https://tongji.baidu.com/
