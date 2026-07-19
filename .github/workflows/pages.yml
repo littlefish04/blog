@@ -37,10 +37,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-npm-
       
-      # 4. 安装依赖
+      # 4. 安装根项目依赖
       - name: Install dependencies
         run: npm ci  # npm ci 比 npm install 更快更稳定，适合 CI 环境
-      
+
+      # 4.5 安装 pnpm（主题 Anatolo 构建需要）
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      # 4.6 安装主题依赖（rollup 等构建工具）
+      - name: Install theme dependencies
+        run: cd themes/Anatolo && pnpm install
+
       # 5. 清理（可选）
       - name: Clean
         run: npm run clean  # 如果有 clean 脚本的话
