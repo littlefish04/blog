@@ -4,9 +4,9 @@ date: 2026-07-18 10:38:43
 tags:
   - Markdown
   - Hexo
-categories:
-  - 学习记录
-cover: /images/cover.jpg
+categories: 建设博客
+toc: true
+summary: 包含了 Hexo 文章元数据头部的介绍，Markdown 基本语法，一个方便的 Hexo 插件的使用方法，以及在博客里插入图片的方法。
 description: 包含了 Hexo 文章元数据头部的介绍，Markdown 基本语法，一个方便的 Hexo 插件的使用方法，以及在博客里插入图片的方法。
 abbrlink: 3228854791
 typora-root-url: 如何编写-Hexo-博客
@@ -21,6 +21,8 @@ typora-root-url: 如何编写-Hexo-博客
 这篇文章主要讲的是，用 Hexo 搭建好博客后，如何用 Markdown 编写博客的内容。
 
 大部分内容是ai回答，自己手动总结排版了一下。如有错误恳请指出。
+
+---
 
 ## 一、 博客撰写语法
 
@@ -60,8 +62,6 @@ description: 这是一篇关于如何写博客文章的介绍
 | `description` | 文章简介 | 可选 |
 | `draft` | 是否为草稿（true/false） | 可选 |
 | `author` | 作者 | 可选 |
-
----
 
 ### 2. Markdown 基础语法
 
@@ -360,6 +360,8 @@ marked:
 
 **方法C：借助社区插件（仅在方法B使用不了的时候推荐）**
 如果觉得手动配置比较繁琐，也可以安装社区插件来辅助，比如 `hexo-asset-image` 或 `hexo-compatible-image`。这些插件的目标是让你直接使用 `![](图片名.jpg)` 这类相对路径，在本地预览和网页显示时都能正常工作。不过，部分较老的插件在安装后可能需要对源码做微调才能完美适配。
+
+---
 
 ## 结语
 
