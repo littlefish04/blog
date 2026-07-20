@@ -13,7 +13,7 @@ timezone: 'Asia/Shanghai'
 
 # URL
 ## Set your site url here. For example, if you use GitHub Page, set url as 'https://username.github.io/project'
-url: http://littlefish04.github.io/blog
+url: https://littlefish04.github.io/blog
 root: /blog/
 permalink: posts/:abbrlink/
 abbrlink:
@@ -99,6 +99,28 @@ pagination_dir: page
 include:
 exclude:
 ignore:
+
+# SEO - Sitemap
+## https://github.com/hexojs/hexo-generator-sitemap
+sitemap:
+  path:
+    - sitemap.xml
+    - sitemap-articles.xml
+  rel: true
+  tags: true
+  categories: true
+
+# SEO - Robots.txt
+## https://github.com/hexojs/hexo-generator-robotstxt
+robotstxt:
+  user_agent: '*'
+  allow:
+    - /
+  disallow:
+    - /css/
+    - /js_complied/
+    - /js/
+  sitemap: https://littlefish04.github.io/blog/sitemap.xml
 
 # Extensions
 ## Plugins: https://hexo.io/plugins/

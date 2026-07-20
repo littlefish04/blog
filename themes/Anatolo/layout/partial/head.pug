@@ -1,4 +1,5 @@
 meta(charset="utf-8")
+meta(name="google-site-verification" content="w13Lw4hzsSX75i2n0s2ZqP2KvO9NPUVdsnK-LB4VuXA")
 meta(name="X-UA-Compatible", content="IE=edge")
 meta(name="author", content=theme.author)
 title
@@ -25,6 +26,34 @@ link(rel="shortcut icon", type="image/x-icon", href=url_for(theme.favicon))
 link(rel="stylesheet", href=url_for("js_complied/bundle.css"))
 link(rel="stylesheet", href=url_for("css/font-awesome.min.css"))
 link(rel="alternate", type="application/atom+xml", title="ATOM 1.0", href="/atom.xml")
+
+//- Open Graph（Facebook、LinkedIn、Telegram 等社交平台分享预览）
+- var og_title = page.title ? page.title + ' · ' + config.title : config.title
+- var og_desc = page.description || page.desc || theme.description || config.description || "A Blog Powered By Hexo"
+- var og_url = config.url + '/' + (page.path || '')
+- var og_img = page.cover || page.image || config.url + '/images/1.png'
+meta(property="og:title", content=og_title)
+meta(property="og:type", content=page.layout === 'post' ? 'article' : 'website')
+meta(property="og:url", content=og_url)
+meta(property="og:description", content=og_desc)
+meta(property="og:image", content=og_img)
+meta(property="og:site_name", content=config.title)
+meta(property="og:locale", content=config.language === 'zh-cn' ? 'zh_CN' : 'en_US')
+if page.layout === 'post'
+  if page.date
+    meta(property="article:published_time", content=page.date.toISOString())
+  if page.updated
+    meta(property="article:modified_time", content=page.updated.toISOString())
+  each tag in (page.tags ? page.tags.toArray() : [])
+    meta(property="article:tag", content=tag.name)
+
+//- Twitter Card
+meta(name="twitter:card", content="summary")
+meta(name="twitter:title", content=og_title)
+meta(name="twitter:description", content=og_desc)
+
+//- Canonical URL（防止重复内容被搜索引擎降权）
+link(rel="canonical", href=og_url)
 
 link(rel="preconnect", href="https://fonts.googleapis.com")
 link(rel="preconnect", href="https://fonts.gstatic.com", crossorigin)
