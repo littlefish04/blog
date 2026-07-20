@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /css/
+Disallow: /js_complied/
+Disallow: /js/
+Allow: /
+Sitemap: https://littlefish04.github.io/blog/sitemap.xml
