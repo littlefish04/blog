@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 420" font-family="Consolas, 'Microsoft YaHei', sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#555"/>
+    </marker>
+    <linearGradient id="bucketGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4A90D9"/>
+      <stop offset="100%" stop-color="#357ABD"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Title -->
+  <text x="375" y="30" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">拉链法（Separate Chaining）哈希表结构</text>
+
+  <!-- Buckets array -->
+  <text x="30" y="75" font-size="13" fill="#555">buckets[]</text>
+  <rect x="110" y="55" width="70" height="36" rx="4" fill="url(#bucketGrad)" stroke="#2B6CB0" stroke-width="1.5"/>
+  <text x="145" y="78" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">[0]</text>
+  <rect x="110" y="91" width="70" height="36" rx="4" fill="url(#bucketGrad)" stroke="#2B6CB0" stroke-width="1.5"/>
+  <text x="145" y="114" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">[1]</text>
+  <rect x="110" y="127" width="70" height="36" rx="4" fill="#FFF3CD" stroke="#D4A017" stroke-width="1.5"/>
+  <text x="145" y="150" text-anchor="middle" font-size="12" fill="#856404" font-weight="bold">[2]</text>
+  <rect x="110" y="163" width="70" height="36" rx="4" fill="url(#bucketGrad)" stroke="#2B6CB0" stroke-width="1.5"/>
+  <text x="145" y="186" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">[3]</text>
+  <rect x="110" y="199" width="70" height="36" rx="4" fill="#FFF3CD" stroke="#D4A017" stroke-width="1.5"/>
+  <text x="145" y="222" text-anchor="middle" font-size="12" fill="#856404" font-weight="bold">[4]</text>
+  <rect x="110" y="235" width="70" height="36" rx="4" fill="url(#bucketGrad)" stroke="#2B6CB0" stroke-width="1.5"/>
+  <text x="145" y="258" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">[5]</text>
+  <text x="110" y="295" font-size="11" fill="#888">... (size = 3+)</text>
+
+  <!-- Entry nodes for bucket[2] -->
+  <rect x="260" y="118" width="155" height="54" rx="6" fill="#E8F5E9" stroke="#4CAF50" stroke-width="1.5"/>
+  <text x="270" y="138" font-size="11" fill="#333">Key: "apple"</text>
+  <text x="270" y="155" font-size="11" fill="#333">Value: 10</text>
+  <text x="270" y="170" font-size="10" fill="#888">next →</text>
+
+  <rect x="470" y="118" width="155" height="54" rx="6" fill="#E8F5E9" stroke="#4CAF50" stroke-width="1.5"/>
+  <text x="480" y="138" font-size="11" fill="#333">Key: "banana"</text>
+  <text x="480" y="155" font-size="11" fill="#333">Value: 20</text>
+  <text x="480" y="170" font-size="10" fill="#888">next = -1 (尾)</text>
+
+  <!-- Entry node for bucket[4] -->
+  <rect x="260" y="190" width="155" height="54" rx="6" fill="#FFF3E0" stroke="#FF9800" stroke-width="1.5"/>
+  <text x="270" y="210" font-size="11" fill="#333">Key: "cat"</text>
+  <text x="270" y="227" font-size="11" fill="#333">Value: 30</text>
+  <text x="270" y="242" font-size="10" fill="#888">next = -1 (尾)</text>
+
+  <!-- Arrows from buckets to entries -->
+  <line x1="180" y1="145" x2="255" y2="145" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="415" y1="145" x2="465" y2="145" stroke="#4CAF50" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="180" y1="217" x2="255" y2="217" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Hash function explanation -->
+  <rect x="30" y="330" width="690" height="75" rx="8" fill="#F5F5F5" stroke="#E0E0E0" stroke-width="1"/>
+  <text x="50" y="352" font-size="12" fill="#555">Hash 过程：</text>
+  <text x="50" y="372" font-size="12" fill="#333">1. comparer.GetHashCode("apple") &amp; 0x7FFFFFFF → 取非负哈希值</text>
+  <text x="50" y="392" font-size="12" fill="#333">2. hashCode % buckets.Length → 映射到 [0, buckets.Length) 区间 →  索引 2</text>
+
+  <!-- Collision note -->
+  <text x="337" y="145" font-size="11" fill="#E65100" font-weight="bold">冲突!</text>
+  <text x="337" y="160" font-size="10" fill="#E65100">"apple" 和 "banana"</text>
+  <text x="337" y="175" font-size="10" fill="#E65100">映射到同一个 bucket</text>
+</svg>
