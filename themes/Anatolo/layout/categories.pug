@@ -8,6 +8,7 @@ block description
   meta(name="description", content=desc)
 
 block content
-  .archive
-    .autopagerize_page_element: .content
-      p!= list_categories(site.categories, { show_count: false })
+  .autopagerize_page_element: .content
+    .archive
+      ul.list-with-title
+        .tag-list!= alphabet_category_list(site.categories, { a: "tag_btn", count: "tag_count", title_tag: "div", title_class: "listing-title", before: `<i class="fa fa-folder"></i> ` })
