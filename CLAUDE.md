@@ -34,7 +34,7 @@ categories: 分类名
 abbrlink: 自动生成  # 由 hexo-abbrlink 插件自动填充
 date: 自动生成       # 由 hexo-auto-front-matter 插件自动填充
 summary: 文章摘要（用于 SEO 和列表展示）（应在50字以内）
-description: 文章摘要（同上）
+description: 文章摘要，用于 SEO
 ---
 ```
 
