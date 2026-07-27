@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 500">
+  <defs>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#e74c3c"/></marker>
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#3498db"/></marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#27ae60"/></marker>
+    <marker id="aRd" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#c0392b"/></marker>
+    <marker id="aBd" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#2980b9"/></marker>
+    <marker id="aGd" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#1e8449"/></marker>
+  </defs>
+  <rect width="620" height="500" fill="#fefefe" rx="10"/>
+  <text x="310" y="32" text-anchor="middle" fill="#333" font-size="18" font-weight="bold" font-family="Arial,sans-serif">绕 Y 轴顺时针旋转 β — 基向量变换</text>
+  <text x="310" y="52" text-anchor="middle" fill="#888" font-size="12" font-family="Arial,sans-serif">右手坐标系 · Y 轴为旋转轴 · XZ 平面内旋转</text>
+
+  <!-- Origin -->
+  <circle cx="280" cy="290" r="4" fill="#333"/>
+
+  <!-- ===== 坐标轴 (右手系: X右, Z上, Y入纸面=右下) ===== -->
+  <!-- X: 向右 -->
+  <line x1="40" y1="290" x2="550" y2="290" stroke="#e74c3c" stroke-width="2.2" marker-end="url(#aR)"/>
+  <text x="545" y="280" fill="#e74c3c" font-size="14" font-weight="bold" font-family="Arial,sans-serif">X</text>
+
+  <!-- Y: 向右下 (穿入纸面, 旋转轴) — 右手系 X×Y=Z -->
+  <line x1="280" y1="290" x2="335" y2="350" stroke="#3498db" stroke-width="2.8" marker-end="url(#aB)"/>
+  <text x="345" y="362" fill="#3498db" font-size="14" font-weight="bold" font-family="Arial,sans-serif">Y</text>
+
+  <!-- Z: 向上 -->
+  <line x1="280" y1="290" x2="280" y2="70" stroke="#27ae60" stroke-width="2.2" marker-end="url(#aG)"/>
+  <text x="292" y="65" fill="#27ae60" font-size="14" font-weight="bold" font-family="Arial,sans-serif">Z</text>
+
+  <!-- XZ 旋转平面 (椭圆, 垂直于Y轴) -->
+  <!-- Y goes into page, so XZ plane is nearly the page plane -->
+  <ellipse cx="280" cy="290" rx="150" ry="145" fill="#f2f6ff" stroke="#bdc3c7" stroke-width="1" stroke-dasharray="5,4"/>
+
+  <!-- ===== 基向量 î (原, X方向) ===== -->
+  <line x1="280" y1="290" x2="430" y2="290" stroke="#e74c3c" stroke-width="3" marker-end="url(#aR)"/>
+  <text x="438" y="305" fill="#e74c3c" font-size="15" font-weight="bold" font-family="Arial,sans-serif">î</text>
+
+  <!-- ===== 基向量 k̂ (原, Z方向) ===== -->
+  <line x1="280" y1="290" x2="280" y2="145" stroke="#27ae60" stroke-width="3" marker-end="url(#aG)"/>
+  <text x="240" y="150" fill="#27ae60" font-size="15" font-weight="bold" font-family="Arial,sans-serif">k̂</text>
+
+  <!-- ===== ĵ (原) = 不变 ===== -->
+  <line x1="280" y1="290" x2="335" y2="350" stroke="#3498db" stroke-width="3.5" marker-end="url(#aB)"/>
+  <text x="320" y="385" fill="#3498db" font-size="14" font-weight="bold" font-family="Arial,sans-serif">ĵ = ĵ' (不变)</text>
+
+  <!-- ===== î' (顺时针旋转β, 从X偏向-Z, β=35°) ===== -->
+  <!-- i' = (cosβ, 0, -sinβ): 屏幕=(280,290)+0.819*(150,0)+(-0.574)*(0,-145)=(403,373) -->
+  <line x1="280" y1="290" x2="403" y2="373" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="8,4" marker-end="url(#aRd)"/>
+  <text x="412" y="392" fill="#c0392b" font-size="14" font-weight="bold" font-family="Arial,sans-serif">î'</text>
+
+  <!-- ===== k̂' (顺时针旋转β, 从Z偏向+X) ===== -->
+  <!-- k' = (sinβ, 0, cosβ): 屏幕=(280,290)+0.574*(150,0)+0.819*(0,-145)=(366,171) -->
+  <line x1="280" y1="290" x2="366" y2="171" stroke="#1e8449" stroke-width="2.5" stroke-dasharray="8,4" marker-end="url(#aGd)"/>
+  <text x="374" y="165" fill="#1e8449" font-size="14" font-weight="bold" font-family="Arial,sans-serif">k̂'</text>
+
+  <!-- 旋转弧线 (在XZ平面顺时针) -->
+  <path d="M 395 290 A 65 65 0 0 1 403 343" fill="none" stroke="#e67e22" stroke-width="2.2"/>
+  <text x="430" y="322" fill="#e67e22" font-size="15" font-style="italic" font-family="Arial,sans-serif">β</text>
+
+  <path d="M 280 175 A 55 55 0 0 1 335 178" fill="none" stroke="#e67e22" stroke-width="2.2"/>
+  <text x="310" y="160" fill="#e67e22" font-size="15" font-style="italic" font-family="Arial,sans-serif">β</text>
+
+  <!-- 旋转轴标注 -->
+  <text x="260" y="390" fill="#3498db" font-size="13" font-weight="bold" font-family="Arial,sans-serif">旋转轴 (Y) →</text>
+
+  <!-- 图例 -->
+  <g transform="translate(35, 445)">
+    <line x1="0" y1="0" x2="28" y2="0" stroke="#555" stroke-width="2.5"/>
+    <text x="36" y="5" fill="#555" font-size="12" font-family="Arial,sans-serif">原基向量</text>
+    <line x1="130" y1="0" x2="158" y2="0" stroke="#555" stroke-width="2" stroke-dasharray="8,4"/>
+    <text x="166" y="5" fill="#555" font-size="12" font-family="Arial,sans-serif">旋转后</text>
+    <text x="260" y="5" fill="#888" font-size="12" font-family="Arial,sans-serif">ĵ 不变 · î k̂ 在 XZ 平面内顺时针旋转 β</text>
+  </g>
+</svg>

@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 530">
+  <defs>
+    <marker id="arrowRed" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#e74c3c"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#3498db"/>
+    </marker>
+    <marker id="arrowRedDash" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#c0392b"/>
+    </marker>
+    <marker id="arrowBlueDash" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2980b9"/>
+    </marker>
+    <marker id="arrowAxis" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 9 3.5, 0 7" fill="#555"/>
+    </marker>
+  </defs>
+
+  <rect width="600" height="530" fill="#fefefe" rx="10"/>
+
+  <!-- Grid lines -->
+  <g stroke="#e8e8e8" stroke-width="1">
+    <line x1="30" y1="60" x2="30" y2="440"/>
+    <line x1="95" y1="60" x2="95" y2="440"/>
+    <line x1="160" y1="60" x2="160" y2="440"/>
+    <line x1="225" y1="60" x2="225" y2="440"/>
+    <line x1="290" y1="60" x2="290" y2="440"/>
+    <line x1="355" y1="60" x2="355" y2="440"/>
+    <line x1="420" y1="60" x2="420" y2="440"/>
+    <line x1="485" y1="60" x2="485" y2="440"/>
+    <line x1="550" y1="60" x2="550" y2="440"/>
+    <line x1="30" y1="115" x2="570" y2="115"/>
+    <line x1="30" y1="180" x2="570" y2="180"/>
+    <line x1="30" y1="245" x2="570" y2="245"/>
+    <line x1="30" y1="310" x2="570" y2="310"/>
+    <line x1="30" y1="375" x2="570" y2="375"/>
+  </g>
+
+  <!-- Axes -->
+  <line x1="20" y1="310" x2="560" y2="310" stroke="#555" stroke-width="2" marker-end="url(#arrowAxis)"/>
+  <text x="555" y="295" fill="#555" font-size="14" font-family="sans-serif">x</text>
+  <line x1="250" y1="450" x2="250" y2="50" stroke="#555" stroke-width="2" marker-end="url(#arrowAxis)"/>
+  <text x="265" y="65" fill="#555" font-size="14" font-family="sans-serif">y</text>
+
+  <!-- Rotation arc (β=35° from x-axis, counterclockwise = upward in math) -->
+  <!-- Center: (250,310), radius: 55 -->
+  <!-- Start at angle 0° → (305, 310) -->
+  <!-- End at angle -35° (SVG): (250+55*cos(-35°), 310+55*sin(-35°)) = (295.1, 278.5) -->
+  <!-- Sweep-flag=0 (counterclockwise in SVG = upward) for math CCW -->
+  <path d="M 305 310 A 55 55 0 0 0 295.1 278.5" fill="none" stroke="#27ae60" stroke-width="2.5"/>
+  <text x="318" y="300" fill="#27ae60" font-size="17" font-style="italic" font-family="serif">β</text>
+
+  <!-- Origin -->
+  <circle cx="250" cy="310" r="3" fill="#333"/>
+
+  <!-- ===== Original basis vectors ===== -->
+  <!-- i-hat: red, horizontal right, length=150 -->
+  <line x1="250" y1="310" x2="398" y2="310" stroke="#e74c3c" stroke-width="3.5" marker-end="url(#arrowRed)"/>
+  <text x="405" y="305" fill="#e74c3c" font-size="15" font-weight="bold" font-family="serif">î = (1, 0)</text>
+
+  <!-- j-hat: blue, vertical up, length=150 -->
+  <line x1="250" y1="310" x2="250" y2="162" stroke="#3498db" stroke-width="3.5" marker-end="url(#arrowBlue)"/>
+  <!-- j-hat label on the RIGHT side to avoid overlap -->
+  <text x="258" y="250" fill="#3498db" font-size="15" font-weight="bold" font-family="serif">ĵ = (0, 1)</text>
+
+  <!-- ===== Rotated basis vectors (β=35°) ===== -->
+  <!-- i-hat': from (250,310), length=150, angle=-35° SVG (= 35° CCW math) -->
+  <!-- dx = 150*cos(-35°) = 122.9, dy = 150*sin(-35°) = -86.0 -->
+  <line x1="250" y1="310" x2="372.9" y2="224.0" stroke="#c0392b" stroke-width="3" stroke-dasharray="8,4" marker-end="url(#arrowRedDash)"/>
+  <text x="378" y="220" fill="#c0392b" font-size="15" font-weight="bold" font-family="serif">î' = (cosβ, sinβ)</text>
+
+  <!-- j-hat': from (250,310), length=150, angle=-125° SVG (= 125° CCW math) -->
+  <!-- dx = 150*cos(-125°) = -86.0, dy = 150*sin(-125°) = -122.9 -->
+  <line x1="250" y1="310" x2="164.0" y2="187.1" stroke="#2980b9" stroke-width="3" stroke-dasharray="8,4" marker-end="url(#arrowBlueDash)"/>
+  <!-- j-hat' label on the LEFT, positioned above to avoid overlap -->
+  <text x="80" y="195" fill="#2980b9" font-size="15" font-weight="bold" font-family="serif">ĵ' = (−sinβ, cosβ)</text>
+
+  <!-- Right angle indicator between i-hat and j-hat -->
+  <polyline points="275,285 275,275 285,275" fill="none" stroke="#999" stroke-width="1.2"/>
+
+  <!-- Right angle indicator between i-hat' and j-hat' -->
+  <!-- i-hat' points along angle -35°; j-hat' along -125°; they're 90° apart -->
+  <!-- Small indicator near the tips -->
+
+  <!-- Title -->
+  <text x="300" y="36" text-anchor="middle" fill="#333" font-size="20" font-weight="bold" font-family="sans-serif">基向量逆时针旋转 β</text>
+
+  <!-- Legend -->
+  <g transform="translate(25, 475)">
+    <line x1="0" y1="0" x2="30" y2="0" stroke="#e74c3c" stroke-width="3"/>
+    <text x="40" y="5" fill="#555" font-size="13" font-family="sans-serif">原基向量</text>
+    <line x1="140" y1="0" x2="170" y2="0" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="8,4"/>
+    <text x="180" y="5" fill="#555" font-size="13" font-family="sans-serif">旋转后的基向量</text>
+  </g>
+</svg>
