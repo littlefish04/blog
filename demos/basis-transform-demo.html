@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基向量变换可视化</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    padding: 14px 16px;
+    overflow: hidden;
+  }
+
+  h1 { font-size: 1.2rem; color: #fff; text-align: center; margin-bottom: 2px; }
+  .subtitle { font-size: 0.78rem; color: #777; text-align: center; margin-bottom: 10px; }
+
+  .main-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    max-width: 540px;
+    margin: 0 auto;
+  }
+
+  /* ---- Canvas ---- */
+  .canvas-wrapper {
+    background: #16213e;
+    border-radius: 10px;
+    padding: 8px;
+    box-shadow: 0 2px 16px rgba(0,0,0,.35);
+    line-height: 0;
+  }
+  canvas { display: block; border-radius: 4px; max-width: 100%; height: auto; }
+
+  /* ---- Control Panel ---- */
+  .panel {
+    background: #16213e;
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 16px rgba(0,0,0,.35);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  /* Preset buttons */
+  .preset-row {
+    display: flex;
+    gap: 6px;
+  }
+  .preset-btn {
+    flex: 1;
+    padding: 6px 4px;
+    border: 1px solid #3a3a5a;
+    border-radius: 6px;
+    background: #1a1a35;
+    color: #bbb;
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: all 0.2s;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .preset-btn:hover { border-color: #7b6cf6; color: #fff; background: #222250; }
+  .preset-btn.active { border-color: #7b6cf6; background: #2a2a5a; color: #fff; box-shadow: 0 0 10px rgba(123,108,246,.2); }
+
+  /* Sliders + Matrix row */
+  .controls-row {
+    display: flex;
+    gap: 14px;
+    align-items: stretch;
+  }
+  .sliders-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .slider-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.76rem;
+  }
+  .slider-item label {
+    color: #999;
+    width: 52px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .slider-item input[type=range] {
+    flex: 1;
+    accent-color: #7b6cf6;
+    height: 4px;
+  }
+  .slider-item .val {
+    color: #ddd;
+    width: 36px;
+    text-align: right;
+    font-family: "SF Mono", "Cascadia Code", monospace;
+    font-size: 0.76rem;
+    flex-shrink: 0;
+  }
+  .val-ihat { color: #ff6b6b !important; }
+  .val-jhat { color: #4ecdc4 !important; }
+
+  /* Matrix display */
+  .matrix-display {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    font-family: "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 0.85rem;
+    background: #0f0f23;
+    border-radius: 6px;
+    padding: 8px 10px;
+    text-align: center;
+    align-content: start;
+    flex-shrink: 0;
+  }
+  .matrix-display .col-header {
+    font-size: 0.65rem;
+    color: #888;
+  }
+  .matrix-display .val {
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+  }
+  .matrix-display .val.col0 { color: #ff6b6b; }
+  .matrix-display .val.col1 { color: #4ecdc4; }
+
+  /* Bottom row: legend + hint */
+  .bottom-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .legend {
+    display: flex;
+    gap: 12px;
+    font-size: 0.74rem;
+    color: #aaa;
+  }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .legend-dot.ihat { background: #ff6b6b; }
+  .legend-dot.jhat { background: #4ecdc4; }
+  .legend-dot.sample { background: #f9ca24; }
+  .hint { font-size: 0.7rem; color: #555; }
+</style>
+</head>
+<body>
+
+<div class="main-container">
+  <!-- Canvas -->
+  <div class="canvas-wrapper">
+    <canvas id="canvas" width="500" height="500"></canvas>
+  </div>
+
+  <!-- Controls -->
+  <div class="panel">
+    <div class="preset-row">
+      <button class="preset-btn active" data-preset="identity">单位矩阵</button>
+      <button class="preset-btn" data-preset="scale2x">2× 缩放</button>
+      <button class="preset-btn" data-preset="rotate45">旋转 45°</button>
+      <button class="preset-btn" data-preset="shear">切变</button>
+      <button class="preset-btn" data-preset="reflectY">Y 翻转</button>
+      <button class="preset-btn" data-preset="projectX">投影 X</button>
+    </div>
+
+    <div class="controls-row">
+      <div class="sliders-col">
+        <div class="slider-item">
+          <label>i-hat → x</label>
+          <input type="range" id="slider-a" min="-3" max="3" step="0.01" value="1">
+          <span class="val val-ihat" id="val-a">1.00</span>
+        </div>
+        <div class="slider-item">
+          <label>i-hat → y</label>
+          <input type="range" id="slider-b" min="-3" max="3" step="0.01" value="0">
+          <span class="val val-ihat" id="val-b">0.00</span>
+        </div>
+        <div class="slider-item">
+          <label>j-hat → x</label>
+          <input type="range" id="slider-c" min="-3" max="3" step="0.01" value="0">
+          <span class="val val-jhat" id="val-c">0.00</span>
+        </div>
+        <div class="slider-item">
+          <label>j-hat → y</label>
+          <input type="range" id="slider-d" min="-3" max="3" step="0.01" value="1">
+          <span class="val val-jhat" id="val-d">1.00</span>
+        </div>
+      </div>
+
+      <div class="matrix-display">
+        <div class="col-header" style="color:#ff6b6b">i-hat 列</div>
+        <div class="col-header" style="color:#4ecdc4">j-hat 列</div>
+        <div class="val col0" id="disp-a">1.00</div>
+        <div class="val col1" id="disp-c">0.00</div>
+        <div class="val col0" id="disp-b">0.00</div>
+        <div class="val col1" id="disp-d">1.00</div>
+      </div>
+    </div>
+
+    <div class="bottom-row">
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot ihat"></span>i-hat</div>
+        <div class="legend-item"><span class="legend-dot jhat"></span>j-hat</div>
+        <div class="legend-item"><span class="legend-dot sample"></span>样本向量</div>
+      </div>
+      <div class="hint">💡 拖拽黄色圆点</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+  const ORIGIN_X = W / 2;
+  const ORIGIN_Y = H / 2;
+  const SCALE = 70;
+  const ARROW_SIZE = 10;
+
+  let targetMatrix = [1, 0, 0, 1];
+  let currentMatrix = [1, 0, 0, 1];
+  let sampleVec = [1, 1];
+
+  function toScreen(x, y) {
+    return [ORIGIN_X + x * SCALE, ORIGIN_Y - y * SCALE];
+  }
+  function toWorld(sx, sy) {
+    return [(sx - ORIGIN_X) / SCALE, (ORIGIN_Y - sy) / SCALE];
+  }
+  function applyMatrix(m, v) {
+    return [m[0] * v[0] + m[2] * v[1], m[1] * v[0] + m[3] * v[1]];
+  }
+
+  // Inverse of 2x2 matrix [a,c; b,d]; returns null if singular
+  function inverseMatrix(m) {
+    const det = m[0] * m[3] - m[1] * m[2];
+    if (Math.abs(det) < 1e-10) return null;
+    return [m[3] / det, -m[1] / det, -m[2] / det, m[0] / det];
+  }
+
+  function drawArrow(fromX, fromY, toX, toY, color, width) {
+    const dx = toX - fromX, dy = toY - fromY;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 0.5) return;
+    const ux = dx / len, uy = dy / len;
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    ctx.lineTo(toX, toY);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    const tipX = toX, tipY = toY;
+    const baseX = tipX - ux * ARROW_SIZE * 1.6, baseY = tipY - uy * ARROW_SIZE * 1.6;
+    const lx = baseX - uy * ARROW_SIZE, ly = baseY + ux * ARROW_SIZE;
+    const rx = baseX + uy * ARROW_SIZE, ry = baseY - ux * ARROW_SIZE;
+    ctx.beginPath();
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(lx, ly);
+    ctx.lineTo(rx, ry);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  function drawGrid(matrix) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    const range = 5;
+    for (let x = -range; x <= range; x++) {
+      ctx.beginPath();
+      for (let t = -range; t <= range; t += 0.1) {
+        const [sx, sy] = toScreen(...applyMatrix(matrix, [x, t]));
+        if (t === -range) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+    }
+    for (let y = -range; y <= range; y++) {
+      ctx.beginPath();
+      for (let t = -range; t <= range; t += 0.1) {
+        const [sx, sy] = toScreen(...applyMatrix(matrix, [t, y]));
+        if (t === -range) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+    }
+  }
+
+  function drawOriginalAxes() {
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6, 8]);
+    ctx.beginPath(); ctx.moveTo(20, ORIGIN_Y); ctx.lineTo(W - 20, ORIGIN_Y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ORIGIN_X, 20); ctx.lineTo(ORIGIN_X, H - 20); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#1a1a30';
+    ctx.fillRect(0, 0, W, H);
+    drawGrid(currentMatrix);
+    drawOriginalAxes();
+
+    const i_end = toScreen(currentMatrix[0], currentMatrix[1]);
+    const j_end = toScreen(currentMatrix[2], currentMatrix[3]);
+    drawArrow(ORIGIN_X, ORIGIN_Y, i_end[0], i_end[1], '#ff6b6b', 3.5);
+    drawArrow(ORIGIN_X, ORIGIN_Y, j_end[0], j_end[1], '#4ecdc4', 3.5);
+
+    const tSample = applyMatrix(currentMatrix, sampleVec);
+    const s_end = toScreen(tSample[0], tSample[1]);
+    drawArrow(ORIGIN_X, ORIGIN_Y, s_end[0], s_end[1], '#f9ca24', 2.8);
+
+    // Ghost: original (untransformed) sample vector
+    const os_end = toScreen(sampleVec[0], sampleVec[1]);
+    ctx.strokeStyle = 'rgba(249,202,36,0.16)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath(); ctx.moveTo(ORIGIN_X, ORIGIN_Y); ctx.lineTo(os_end[0], os_end[1]); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Drag handle: at TRANSFORMED position
+    const [hx, hy] = s_end;
+    ctx.beginPath(); ctx.arc(hx, hy, 10, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(249,202,36,0.25)'; ctx.fill();
+    ctx.strokeStyle = '#f9ca24'; ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.beginPath(); ctx.arc(ORIGIN_X, ORIGIN_Y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+
+    ctx.font = 'bold 14px "SF Mono", "Cascadia Code", "Consolas", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ff6b6b';
+    ctx.fillText('î', i_end[0] + (i_end[0] - ORIGIN_X) * 0.12, i_end[1] + (i_end[1] - ORIGIN_Y) * 0.12 - 6);
+    ctx.fillStyle = '#4ecdc4';
+    ctx.fillText('ĵ', j_end[0] + (j_end[0] - ORIGIN_X) * 0.12, j_end[1] + (j_end[1] - ORIGIN_Y) * 0.12 - 6);
+    ctx.fillStyle = '#f9ca24';
+    ctx.fillText('v', s_end[0] + (s_end[0] - ORIGIN_X) * 0.12, s_end[1] + (s_end[1] - ORIGIN_Y) * 0.12 - 6);
+  }
+
+  const LERP = 0.12;
+  function animate() {
+    let changed = false;
+    for (let i = 0; i < 4; i++) {
+      if (Math.abs(currentMatrix[i] - targetMatrix[i]) > 0.0005) {
+        currentMatrix[i] += (targetMatrix[i] - currentMatrix[i]) * LERP;
+        changed = true;
+      } else currentMatrix[i] = targetMatrix[i];
+    }
+    draw();
+    if (changed) updateDisplay();
+    requestAnimationFrame(animate);
+  }
+
+  function updateDisplay() {
+    const m = currentMatrix;
+    ['val-a','val-b','val-c','val-d'].forEach((id, i) => {
+      document.getElementById(id).textContent = m[i].toFixed(2);
+    });
+    ['disp-a','disp-b','disp-c','disp-d'].forEach((id, i) => {
+      document.getElementById(id).textContent = m[[0,1,2,3][i]].toFixed(2);
+    });
+  }
+
+  function syncSliders() {
+    ['slider-a','slider-b','slider-c','slider-d'].forEach((id, i) => {
+      document.getElementById(id).value = targetMatrix[i];
+    });
+  }
+
+  const presets = {
+    identity:  [1, 0, 0, 1],
+    scale2x:   [2, 0, 0, 2],
+    rotate45:  [0.7071, 0.7071, -0.7071, 0.7071],
+    shear:     [1, 0, 0.8, 1],
+    reflectY:  [1, 0, 0, -1],
+    projectX:  [1, 0, 0, 0],
+  };
+
+  function applyPreset(name) {
+    if (!presets[name]) return;
+    targetMatrix = [...presets[name]];
+    syncSliders();
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-preset="${name}"]`)?.classList.add('active');
+  }
+
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+  });
+
+  ['slider-a','slider-b','slider-c','slider-d'].forEach((id, idx) => {
+    document.getElementById(id).addEventListener('input', (e) => {
+      targetMatrix[idx] = parseFloat(e.target.value);
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    });
+  });
+
+  let dragging = false;
+  function getHandleDist(sx, sy) {
+    // Handle is at the TRANSFORMED sample vector tip
+    const t = applyMatrix(currentMatrix, sampleVec);
+    const [hx, hy] = toScreen(t[0], t[1]);
+    return Math.sqrt((sx - hx) ** 2 + (sy - hy) ** 2);
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const sx = (e.clientX - rect.left) * (W / rect.width);
+    const sy = (e.clientY - rect.top) * (H / rect.height);
+    if (getHandleDist(sx, sy) < 16) { dragging = true; canvas.style.cursor = 'grabbing'; }
+  });
+  window.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const sx = (e.clientX - rect.left) * (W / rect.width);
+    const sy = (e.clientY - rect.top) * (H / rect.height);
+    if (dragging) {
+      // Inverse transform: screen → world → original vector
+      const [wx, wy] = toWorld(sx, sy);
+      const inv = inverseMatrix(currentMatrix);
+      if (inv) {
+        const orig = applyMatrix(inv, [wx, wy]);
+        sampleVec[0] = Math.round(orig[0] * 100) / 100;
+        sampleVec[1] = Math.round(orig[1] * 100) / 100;
+      }
+    } else {
+      canvas.style.cursor = getHandleDist(sx, sy) < 16 ? 'grab' : 'default';
+    }
+  });
+  window.addEventListener('mouseup', () => { dragging = false; canvas.style.cursor = 'default'; });
+
+  canvas.addEventListener('touchstart', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    const sx = (t.clientX - rect.left) * (W / rect.width);
+    const sy = (t.clientY - rect.top) * (H / rect.height);
+    if (getHandleDist(sx, sy) < 20) { dragging = true; e.preventDefault(); }
+  }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => {
+    if (!dragging) return;
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    const sx = (t.clientX - rect.left) * (W / rect.width);
+    const sy = (t.clientY - rect.top) * (H / rect.height);
+    const [wx, wy] = toWorld(sx, sy);
+    const inv = inverseMatrix(currentMatrix);
+    if (inv) {
+      const orig = applyMatrix(inv, [wx, wy]);
+      sampleVec[0] = Math.round(orig[0] * 100) / 100;
+      sampleVec[1] = Math.round(orig[1] * 100) / 100;
+    }
+  }, { passive: false });
+  canvas.addEventListener('touchend', () => { dragging = false; });
+
+  syncSliders();
+  updateDisplay();
+  animate();
+})();
+</script>
+</body>
+</html>
