@@ -9,6 +9,7 @@ summary: 介绍如何通过 hexo-filter-mathjax 插件让 Hexo 博客支持 LaTe
 description: >-
   介绍如何通过 hexo-filter-mathjax 插件让 Hexo 博客支持 LaTeX 数学公式渲染，解决公式在 Typora
   正常但部署后无法显示的问题。
+abbrlink: 1551216519
 date: 2026-07-27 13:41:53
 ---
 
@@ -144,7 +145,7 @@ $$
 | $\times$ | `\times` | 叉乘 |
 | $\frac{a}{b}$ | `\frac{a}{b}` | 分数 |
 | $\sqrt{x}$ | `\sqrt{x}` | 平方根 |
-| $\begin{bmatrix} a & b \\ c & d \end{bmatrix}$ | `\begin{bmatrix} a & b \\ c & d \end{bmatrix}` | 矩阵 |
+| $\begin{bmatrix} a & b \cr c & d \end{bmatrix}$ | `\begin{bmatrix} a & b \cr c & d \end{bmatrix}` | 矩阵 |
 | $\alpha, \beta, \theta$ | `\alpha, \beta, \theta` | 希腊字母 |
 | $\sum_{i=1}^{n}$ | `\sum_{i=1}^{n}` | 求和 |
 
@@ -152,6 +153,7 @@ $$
 
 - **不要在有 `_` 的公式外加 `*` 或 `_` 标记**（如 `*$a_b$*`），Markdown 的斜体语法可能干扰公式解析。
 - **行内公式的 `$` 前后不要有空格**：写成 `$x+y$` 而不是 `$ x+y $`，避免某些情况下识别失败。
+- **矩阵换行用 `\cr` 而不是 `\\`**：因为 `hexo-renderer-marked` 会把 `\\` 转义成 `\`，导致换行失效。写成 `\begin{bmatrix} a & b \cr c & d \end{bmatrix}` 即可。`\cr` 是 TeX 标准换行命令，在 Typora 和网站上都能正确渲染。
 - **如果公式中包含 `$` 符号本身**（如表示美元金额），需要用 `\$` 转义。
 
 ---

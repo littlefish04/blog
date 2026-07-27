@@ -62,6 +62,7 @@ description: 文章摘要，用于 SEO
 - **行内公式**：`$...$`，如 `$\hat{i}$`、`$\vec{v}$`、`$\cdot$`、`$\frac{a}{b}$`
 - **块级公式**：`$$...$$`
 - **AMS 环境**：`\begin{bmatrix} ... \end{bmatrix}`、`\begin{equation} ... \end{equation}` 等均支持
+- **矩阵换行**：必须用 `\cr` 而非 `\\`（marked 会把 `\\` 转义为 `\` 导致换行失效），Typora 和网站均兼容
 - **注意**：公式内 `_` 可能被 Markdown 误解析为斜体，慎在公式外嵌套 `*` 或 `_`
 
 ## SEO 配置
