@@ -33,6 +33,7 @@ category_dir: categories
 code_dir: downloads/code
 i18n_dir: :lang
 skip_render:
+  - demos/**
 
 # Writing
 new_post_name: :title.md # File name of new posts
@@ -170,3 +171,12 @@ nofollow:
   exclude:
     - 'exclude1.com'
     - 'exclude2.com'
+
+# MathJax 数学公式渲染
+mathjax:
+  tags: none          # 'none' | 'ams' | 'all' — 推荐用 none，使用 $ 和 $$ 作为分隔符
+  single_dollars: true # 启用单个 $ 作为行内公式分隔符
+  cjk_width: 0.9      # CJK 字符的相对宽度（用于间距调整）
+  normal_width: 0.6    # 普通字符的相对宽度（用于间距调整）
+  append_css: true     # 自动添加必要的 CSS
+  every_page: true     # 设为 true 则每页都加载 MathJax；false 则仅在前置声明 mathjax: true 的页面加载
