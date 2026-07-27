@@ -54,6 +54,15 @@ description: 文章摘要，用于 SEO
 | hexo-generator-robotstxt | 生成 robots.txt |
 | hexo-filter-nofollow | 外链添加 nofollow |
 | hexo-renderer-marked | Markdown 渲染（支持 postAsset） |
+| hexo-filter-mathjax | 数学公式渲染（注入 MathJax CDN） |
+
+## 数学公式支持
+
+- **插件**：`hexo-filter-mathjax`，配置 `tags: ams`、`single_dollars: true`
+- **行内公式**：`$...$`，如 `$\hat{i}$`、`$\vec{v}$`、`$\cdot$`、`$\frac{a}{b}$`
+- **块级公式**：`$$...$$`
+- **AMS 环境**：`\begin{bmatrix} ... \end{bmatrix}`、`\begin{equation} ... \end{equation}` 等均支持
+- **注意**：公式内 `_` 可能被 Markdown 误解析为斜体，慎在公式外嵌套 `*` 或 `_`
 
 ## SEO 配置
 

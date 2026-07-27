@@ -59,7 +59,7 @@ npm install hexo-filter-mathjax --save
 ```yaml
 # MathJax 数学公式渲染
 mathjax:
-  tags: none          # 'none' | 'ams' | 'all' — 推荐用 none，使用 $ 和 $$ 作为分隔符
+  tags: ams           # 'none' | 'ams' | 'all' — ams 启用 \begin{} 环境（如 bmatrix、equation 等）
   single_dollars: true # 启用单个 $ 作为行内公式分隔符
   cjk_width: 0.9      # CJK 字符的相对宽度（用于间距调整）
   normal_width: 0.6    # 普通字符的相对宽度（用于间距调整）
@@ -71,7 +71,7 @@ mathjax:
 
 | 配置项 | 说明 |
 |--------|------|
-| `tags` | 数学公式分隔符。`none` 表示使用 `$` 和 `$$`，`ams` 额外支持 `\begin{equation}` 等环境，`all` 则全部启用 |
+| `tags` | 数学公式分隔符。`ams` 支持 `$`、`$$` 和 `\begin{env}` 环境（如 `bmatrix`、`equation`）。`none` 仅支持 `$` 和 `$$`，`all` 额外支持 `\begin{math}` 等基础环境 |
 | `single_dollars` | 是否启用单个 `$` 作为行内公式分隔符。**必须设为 `true`**，否则 `$\hat{i}$` 这种写法不会被识别 |
 | `cjk_width` / `normal_width` | 用于公式间距微调，一般保持默认即可 |
 | `append_css` | 是否自动添加 MathJax 相关 CSS，建议开启 |
