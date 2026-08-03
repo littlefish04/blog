@@ -2,13 +2,16 @@
 title: Quaternion 四元数
 categories: Unity 基础学习
 toc: true
-date: 2026-08-03 09:45:14
 tags:
- - 图形学基础
- - Unity
+  - 图形学基础
+  - Unity
 summary: 从实用角度讲解四元数的定义、运算、旋转表示、插值方法，以及在 Unity 中的使用技巧。
-description: 本文系统讲解四元数的基本概念（定义与运算）、用单位四元数表示三维旋转的数学原理、四元数与旋转矩阵的相互转换、Slerp/Nlerp 插值方法，以及在 Unity 引擎中的常用 API 和实践注意事项。
+description: >-
+  本文系统讲解四元数的基本概念（定义与运算）、用单位四元数表示三维旋转的数学原理、四元数与旋转矩阵的相互转换、Slerp/Nlerp 插值方法，以及在
+  Unity 引擎中的常用 API 和实践注意事项。
 typora-root-url: Quaternion-四元数
+abbrlink: 2548690783
+date: 2026-08-03 09:45:14
 ---
 
 ---
