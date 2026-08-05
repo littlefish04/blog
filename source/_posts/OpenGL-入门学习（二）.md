@@ -14,7 +14,7 @@ description:
 ---
 ## 写在前面
 
-上一篇博客 [OpenGL 入门学习（一） · littlefish04个人博客](https://littlefish04.github.io/blog/posts/3167167368/) 中提到的 GLFW 库让我们能够创建一个图形化窗口，同时也给我们初始化了 OpenGL 上下文，现在我们可以编写 OpenGL 代码在窗口中绘制图形。
+上一篇博客 [OpenGL 入门学习（一） · littlefish04个人博客](https://littlefish04.github.io/blog/posts/3167167368/) 中配置的 GLFW 库让我们能够创建一个图形化窗口，同时也给我们初始化了 OpenGL 上下文，现在我们可以编写 OpenGL 代码在窗口中绘制图形。
 
 部分内容为ai生成，如有错误恳请指出。
 

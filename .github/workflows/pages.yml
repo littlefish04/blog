@@ -61,8 +61,10 @@ jobs:
       
       # 7. 生成 IndexNow key 文件（必须在部署前生成，随构建产物一起上传）
       # 线上地址：https://littlefish04.github.io/blog/{key}.txt（keyLocation 指向此处，无需放域名根）
+      # 注意：必须用 printf '%s' 而非 echo——echo 会追加换行符，IndexNow 对 key 文件内容严格比对，
+      # 尾部换行会导致验证失败（HTTP 403 UserForbiddedToAccessSite）
       - name: Generate IndexNow key file
-        run: echo "${{ secrets.INDEXNOW_KEY }}" > public/"${{ secrets.INDEXNOW_KEY }}".txt
+        run: printf '%s' "${{ secrets.INDEXNOW_KEY }}" > public/"${{ secrets.INDEXNOW_KEY }}".txt
 
       # 8. 部署到 gh-pages 分支
       - name: Deploy to gh-pages
@@ -109,33 +111,46 @@ jobs:
           urls = list(dict.fromkeys(urls))
 
           # 2) 等待 CDN 缓存生效（key 文件刚部署上线，最长等 5 分钟）
+          # 严格比对内容（与 IndexNow 校验标准一致，不允许尾部换行等差异）
           for _ in range(10):
               try:
                   content = urllib.request.urlopen(key_location, timeout=10).read().decode()
-                  if content.strip() == key:
+                  if content == key:
                       print("key 文件已上线")
                       break
               except Exception:
                   pass
               time.sleep(30)
 
-          # 3) 推送 URL 列表
+          # 3) 推送 URL 列表；IndexNow 首次验证可能存在传播延迟（Bing 抓取需要时间），
+          #    失败后等待 60s 重试，最多 3 次
           payload = {
               "host": host,
               "key": key,
               "keyLocation": key_location,
               "urlList": urls,
           }
-          req = urllib.request.Request(
-              "https://api.indexnow.org/indexnow",
-              data=json.dumps(payload).encode("utf-8"),
-              headers={"Content-Type": "application/json; charset=utf-8"},
-          )
-          try:
-              with urllib.request.urlopen(req, timeout=30) as resp:
-                  print(f"IndexNow 已接受: HTTP {resp.status}, 共推送 {len(urls)} 个 URL")
-          except urllib.error.HTTPError as e:
-              print(f"IndexNow FAILED: HTTP {e.code}")
-              print(e.read().decode(errors="ignore"))
+          ok = False
+          for attempt in range(1, 4):
+              req = urllib.request.Request(
+                  "https://api.indexnow.org/indexnow",
+                  data=json.dumps(payload).encode("utf-8"),
+                  headers={"Content-Type": "application/json; charset=utf-8"},
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as resp:
+                      print(f"IndexNow 已接受: HTTP {resp.status}, 共推送 {len(urls)} 个 URL")
+                      ok = True
+                      break
+              except urllib.error.HTTPError as e:
+                  print(f"IndexNow 尝试 {attempt}/3 失败: HTTP {e.code}")
+                  print(e.read().decode(errors="ignore"))
+                  if attempt < 3:
+                      time.sleep(60)
+              except Exception as e:
+                  print(f"IndexNow 尝试 {attempt}/3 异常: {e}")
+                  if attempt < 3:
+                      time.sleep(60)
+          if not ok:
               sys.exit(1)
           EOF
