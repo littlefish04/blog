@@ -9,8 +9,10 @@
 - **根路径**：`/blog/`（所有资源引用需加此前缀）
 - **主题**：Anatolo（Pug 模板 + Stylus 样式 + TypeScript 前端）
 - **主题配置**：`_config.Anatolo.yml`（评论、导航、社交链接等）
-- **部署**：`hexo deploy` → git push 到 `git@github.com:littlefish04/littlefish04.github.io.git` 的 `gh-pages` 分支
+- **GitHub 仓库**：`littlefish04/blog`（项目站点，部署到 `https://littlefish04.github.io/blog/`）
+- **部署**：实际工作流是 git push 到 main 分支 → CI 自动部署到 gh-pages 分支（不用 `hexo deploy`）；仓库未配置 `hexo deploy` 对应的 git 部署 URL
 - **CI/CD**：push 到 main 分支自动触发 GitHub Actions 部署（`.github/workflows/pages.yml`）
+- **域名根**：`https://littlefish04.github.io/` 由独立仓库 `littlefish04/littlefish04.github.io` 托管（存放根 robots.txt 和跳转页）
 
 ## 常用命令
 
@@ -70,6 +72,11 @@ description: 文章摘要，用于 SEO
 - sitemap 路径：`sitemap.xml`、`sitemap-articles.xml`
 - robots.txt 提交了 sitemap 地址
 - 全站外链自动添加 `nofollow`
+- **IndexNow 自动推送**（Bing/Yandex/Naver 等）：部署工作流 `pages.yml` 在部署后自动生成 key 文件并推送 sitemap 全部 URL
+  - key 存于 GitHub Secret `INDEXNOW_KEY`（64 字符 hex），勿明文写入仓库
+  - key 文件位置：`https://littlefish04.github.io/blog/{key}.txt`（子路径即可，推送时通过 `keyLocation` 参数指定，无需放域名根）
+  - 端点：`POST https://api.indexnow.org/indexnow`；响应 200 成功、403 key 无效、422 URL 不属于该 host
+  - Google 不支持 IndexNow，Google 侧需在 Search Console 单独提交 sitemap
 
 ## 写作风格
 

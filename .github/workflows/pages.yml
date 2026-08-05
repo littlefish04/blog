@@ -80,3 +80,62 @@ jobs:
           # 可选配置
           allow_empty_commit: true  # 允许空提交
           keep_files: false  # 是否保留 gh-pages 分支上的旧文件（默认 false，会完全替换）
+
+      # 8. 生成 IndexNow key 文件
+      # 部署后可通过 https://littlefish04.github.io/blog/{key}.txt 访问（keyLocation 指向此处，无需放在域名根）
+      - name: Generate IndexNow key file
+        run: echo "${{ secrets.INDEXNOW_KEY }}" > public/"${{ secrets.INDEXNOW_KEY }}".txt
+
+      # 9. 通过 IndexNow 推送全部 URL 给搜索引擎（Bing / Yandex / Naver 等）
+      # 从构建产物 sitemap.xml 提取 URL（不依赖线上 CDN 缓存），POST 到 api.indexnow.org
+      - name: Submit URLs via IndexNow
+        env:
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+        run: |
+          python3 - <<'EOF'
+          import json, sys, time, urllib.request, urllib.error
+
+          key = "${{ secrets.INDEXNOW_KEY }}"
+          host = "littlefish04.github.io"
+          key_location = f"https://{host}/blog/{key}.txt"
+
+          # 1) 从构建产物中提取全部 URL（含去重）
+          urls = []
+          with open("public/sitemap.xml", encoding="utf-8") as f:
+              for line in f:
+                  start = line.find("<loc>")
+                  if start != -1:
+                      urls.append(line[start + 5 : line.find("</loc>")])
+          urls = list(dict.fromkeys(urls))
+
+          # 2) 等待 CDN 缓存生效（key 文件刚部署上线，最长等 5 分钟）
+          for _ in range(10):
+              try:
+                  content = urllib.request.urlopen(key_location, timeout=10).read().decode()
+                  if content.strip() == key:
+                      print("key 文件已上线")
+                      break
+              except Exception:
+                  pass
+              time.sleep(30)
+
+          # 3) 推送 URL 列表
+          payload = {
+              "host": host,
+              "key": key,
+              "keyLocation": key_location,
+              "urlList": urls,
+          }
+          req = urllib.request.Request(
+              "https://api.indexnow.org/indexnow",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={"Content-Type": "application/json; charset=utf-8"},
+          )
+          try:
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  print(f"IndexNow OK: HTTP {resp.status}, 共推送 {len(urls)} 个 URL")
+          except urllib.error.HTTPError as e:
+              print(f"IndexNow FAILED: HTTP {e.code}")
+              print(e.read().decode(errors="ignore"))
+              sys.exit(1)
+          EOF
