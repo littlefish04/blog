@@ -110,8 +110,8 @@ https://<主机域名>/{key}.txt
 ```json
 {
   "host": "littlefish04.github.io",
-  "key": "6e5da5d584821d297d08c0c663a30064084034141a72eed8ecfbd4e26abe5d90",
-  "keyLocation": "https://littlefish04.github.io/blog/6e5da5d584821d297d08c0c663a30064084034141a72eed8ecfbd4e26abe5d90.txt",
+  "key": "31cc5793ace9a80632eef04564d210d8e19c313532025cb6394660ee19bbdf41",
+  "keyLocation": "https://littlefish04.github.io/blog/31cc5793ace9a80632eef04564d210d8e19c313532025cb6394660ee19bbdf41.txt",
   "urlList": [
     "https://littlefish04.github.io/blog/",
     "https://littlefish04.github.io/blog/posts/1551216519/"
@@ -147,7 +147,7 @@ curl -X POST "https://api.indexnow.org/indexnow" \
 
 ```text
 CI 构建产物（public/）
-  ├─ 部署前：echo key > public/{key}.txt    ← key 文件随产物一起上传
+  ├─ 部署前：printf key > public/{key}.txt  ← key 文件随产物一起上传
   ├─ 部署：上传 public/ 到 gh-pages
   └─ 部署后：读取 public/sitemap.xml，提取全部 URL，POST 给 api.indexnow.org
 ```
@@ -158,7 +158,7 @@ CI 构建产物（public/）
 
 ```bash
 openssl rand -hex 32
-# 例如输出：6e5da5d584821d297d08c0c663a30064084034141a72eed8ecfbd4e26abe5d90
+# 例如输出：31cc5793ace9a80632eef04564d210d8e19c313532025cb6394660ee19bbdf41
 ```
 
 `openssl rand -hex 32` 生成 32 字节随机数，输出 64 个 hex 字符；协议只要求 8~128 个字符，这个长度绰绰有余。
@@ -183,10 +183,10 @@ key 存进 Secret 后，工作流里就能用 `${{ secrets.INDEXNOW_KEY }}` 引�
 ```yaml
 # 生成 IndexNow key 文件（必须在部署前生成，随构建产物一起上传）
 - name: Generate IndexNow key file
-  run: echo "${{ secrets.INDEXNOW_KEY }}" > public/"${{ secrets.INDEXNOW_KEY }}".txt
+  run: printf '%s' "${{ secrets.INDEXNOW_KEY }}" > public/"${{ secrets.INDEXNOW_KEY }}".txt
 ```
 
-`echo` 把 key 写进 `public/` 下以 key 命名的 `.txt` 文件，key 文件由此进入构建产物、随站点一起上线。**必须赶在部署步骤之前**——部署是"拍照上传"，构建产物是什么样，线上就是什么样；这一步放晚了，线上就没有 key 文件（正是踩坑记录坑 1 踩过的坑）。
+`printf '%s'` 把 key 精确写入 `public/` 下以 key 命名的 `.txt` 文件——文件内容与 key 完全一致，不含任何额外换行符，与 IndexNow 的校验标准严格对齐。key 文件由此进入构建产物、随站点一起上线。**必须赶在部署步骤之前**——部署是"拍照上传"，构建产物是什么样，线上就是什么样；这一步放晚了，线上就没有 key 文件（正是踩坑记录坑 1 踩过的坑）。
 
 **部署后：推送 URL**
 
@@ -215,34 +215,46 @@ key 存进 Secret 后，工作流里就能用 `${{ secrets.INDEXNOW_KEY }}` 引�
     urls = list(dict.fromkeys(urls))
 
     # 2) 等待 CDN 缓存生效（key 文件刚部署上线，最长等 5 分钟）
+    # 严格比对内容（与 IndexNow 校验标准一致，不允许尾部换行等差异）
     for _ in range(10):
         try:
             content = urllib.request.urlopen(key_location, timeout=10).read().decode()
-            if content.strip() == key:
+            if content == key:
                 print("key 文件已上线")
                 break
         except Exception:
             pass
         time.sleep(30)
 
-    # 3) 推送 URL 列表
+    # 3) 推送 URL 列表；失败后等待 60s 重试，最多 3 次
     payload = {
         "host": host,
         "key": key,
         "keyLocation": key_location,
         "urlList": urls,
     }
-    req = urllib.request.Request(
-        "https://api.indexnow.org/indexnow",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json; charset=utf-8"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            print(f"IndexNow 已接受: HTTP {resp.status}, 共推送 {len(urls)} 个 URL")
-    except urllib.error.HTTPError as e:
-        print(f"IndexNow FAILED: HTTP {e.code}")
-        print(e.read().decode(errors="ignore"))
+    ok = False
+    for attempt in range(1, 4):
+        req = urllib.request.Request(
+            "https://api.indexnow.org/indexnow",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json; charset=utf-8"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                print(f"IndexNow 已接受: HTTP {resp.status}, 共推送 {len(urls)} 个 URL")
+                ok = True
+                break
+        except urllib.error.HTTPError as e:
+            print(f"IndexNow 尝试 {attempt}/3 失败: HTTP {e.code}")
+            print(e.read().decode(errors="ignore"))
+            if attempt < 3:
+                time.sleep(60)
+        except Exception as e:
+            print(f"IndexNow 尝试 {attempt}/3 异常: {e}")
+            if attempt < 3:
+                time.sleep(60)
+    if not ok:
         sys.exit(1)
     EOF
 ```
@@ -268,10 +280,11 @@ urls = list(dict.fromkeys(urls))
 
 ```python
 # 2) 等待 CDN 缓存生效（key 文件刚部署上线，最长等 5 分钟）
+# 严格比对内容（与 IndexNow 校验标准一致，不允许尾部换行等差异）
 for _ in range(10):
     try:
         content = urllib.request.urlopen(key_location, timeout=10).read().decode()
-        if content.strip() == key:
+        if content == key:
             print("key 文件已上线")
             break
     except Exception:
@@ -279,33 +292,44 @@ for _ in range(10):
     time.sleep(30)
 ```
 
-GitHub Pages 有 CDN 缓存，key 文件刚部署时可能暂时 404；而 `keyLocation` 文件不可访问时提交会被拒绝（403）。所以先循环探测：每 30 秒访问一次 key 文件，直到可访问且内容匹配才继续，最多等 10 次（5 分钟）。这个等待很有必要。
+GitHub Pages 有 CDN 缓存，key 文件刚部署时可能暂时 404；而 `keyLocation` 文件不可访问时提交会被拒绝（403）。所以先循环探测：每 30 秒访问一次 key 文件，直到可访问且内容匹配才继续，最多等 10 次（5 分钟）。注意这里用的是**严格比较**（`content == key`）——与 IndexNow 服务端的校验标准保持一致，探测逻辑判定"上线"的标准就是服务端判定"有效"的标准。
 
-**③ 发起推送**
+**③ 发起推送（带重试）**
 
 ```python
-# 3) 推送 URL 列表
+# 3) 推送 URL 列表；失败后等待 60s 重试，最多 3 次
 payload = {
     "host": host,
     "key": key,
     "keyLocation": key_location,
     "urlList": urls,
 }
-req = urllib.request.Request(
-    "https://api.indexnow.org/indexnow",
-    data=json.dumps(payload).encode("utf-8"),
-    headers={"Content-Type": "application/json; charset=utf-8"},
-)
-try:
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        print(f"IndexNow 已接受: HTTP {resp.status}, 共推送 {len(urls)} 个 URL")
-except urllib.error.HTTPError as e:
-    print(f"IndexNow FAILED: HTTP {e.code}")
-    print(e.read().decode(errors="ignore"))
+ok = False
+for attempt in range(1, 4):
+    req = urllib.request.Request(
+        "https://api.indexnow.org/indexnow",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json; charset=utf-8"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            print(f"IndexNow 已接受: HTTP {resp.status}, 共推送 {len(urls)} 个 URL")
+            ok = True
+            break
+    except urllib.error.HTTPError as e:
+        print(f"IndexNow 尝试 {attempt}/3 失败: HTTP {e.code}")
+        print(e.read().decode(errors="ignore"))
+        if attempt < 3:
+            time.sleep(60)
+    except Exception as e:
+        print(f"IndexNow 尝试 {attempt}/3 异常: {e}")
+        if attempt < 3:
+            time.sleep(60)
+if not ok:
     sys.exit(1)
 ```
 
-`POST` 到 `api.indexnow.org`，payload 结构与第三章的 JSON 完全一致。注意两个细节：`host` 填**域名根**（`littlefish04.github.io`，不带 `/blog` 路径），`keyLocation` 指向 `/blog/` 下的文件；异常时打印错误并 `sys.exit(1)`，让 CI 步骤以失败告终，避免"假成功"。
+`POST` 到 `api.indexnow.org`，payload 结构与第三章的 JSON 完全一致。注意三个细节：`host` 填**域名根**（`littlefish04.github.io`，不带 `/blog` 路径），`keyLocation` 指向 `/blog/` 下的文件；HTTP 错误（403/422/429 等）等待 60 秒后重试，最多 3 次——key 验证类错误存在服务器侧状态传播延迟，立刻重试可能只是重复踩同一个坑；只有 3 次都失败才 `sys.exit(1)`，让 CI 步骤以失败告终，避免"假成功"。
 
 ### Step 4：push 触发并验证
 
@@ -320,7 +344,7 @@ git push
 **1. key 文件已上线**——请求 key 文件，应返回 200 且内容与 key 一致：
 
 ```bash
-curl https://littlefish04.github.io/blog/6e5da5d5....txt
+curl https://littlefish04.github.io/blog/31cc5793ace9a80632eef04564d210d8e19c313532025cb6394660ee19bbdf41.txt
 ```
 
 **2. CI 日志中推送步骤输出 202/200**——本次部署的 Actions 日志里应出现：
@@ -348,6 +372,25 @@ IndexNow 已接受: HTTP 202, 共推送 25 个 URL
 文档写明成功响应码是 200，但实际 API 返回的是 **202 Accepted**——IndexNow 现在采用**异步验证**：请求先被接收（202），key 文件是否有效是后台再验证的。这意味着即使 key 文件 404、请求会被后台丢弃，API 依然返回 202，CI 依然显示成功。
 
 > **教训：验证推送是否真实有效，核心指标是"key 文件线上可访问"。** 手动 `curl` 确认 key 文件返回 200 且内容匹配，推送才有意义。
+
+### 坑 3：key 文件一切正常，推送却持续 403——换新 key 解决
+
+某次部署之后，IndexNow 提交开始稳定返回 403 `UserForbiddedToAccessSite`，但线上 key 文件**完全正常**：HTTP 200、`text/plain`、无重定向、内容与 key 严格一致。最迷惑的是：同一份工作流、同一个 key，**前一天还推送成功**，之后却再也没成功过。
+
+按"key 文件侧"逐个排查，全部排除：
+
+| 排查项 | 结果 |
+|--------|------|
+| key 文件 404 / 内容不符 | 排除：200 且内容精确匹配 |
+| 文件带尾部换行符 | 排除：改为无换行后依旧 403 |
+| CDN 缓存旧内容 | 排除：`keyLocation` 带查询参数绕缓存仍 403 |
+| 提交方式差异（GET / POST） | 排除：均 403 |
+| Bing Webmaster Tools 站点验证 | 排除：XML 文件验证完成后依旧 403 |
+| 服务端临时故障 | 排除：多次重试（分钟级~小时级间隔）均失败 |
+
+最后用实测定位了根因：**换一个新 key 后立即返回 202**。新 key 意味着新文件名、全新 URL、无任何历史状态——也就是说，**IndexNow 服务端会缓存 (host, key) 的验证结果**。一旦某次重新验证 key 文件时抓取失败（最典型的诱因：GitHub Pages 部署时整分支替换，key 文件存在短暂的 404 窗口，恰逢服务端重新验证），失败结果就会被长期记住，此后无论文件多正确，这个 key 都会被持续拒绝。
+
+> **教训：403 持续且 key 文件确认无误时，不要在文件侧继续耗时间——直接换新 key。** `openssl rand -hex 32` 生成新 key，更新 GitHub Secret 后重新部署即可；key 本身不是秘密（文件要公开可读），换 key 的成本几乎为零。
 
 ---
 
@@ -377,6 +420,7 @@ Google 的替代方案：
 1. **key 文件位置由协议默认（主机根）决定，但子路径站点用 `keyLocation` 参数即可解决**，不需要因此去维护另一个仓库
 2. **构建产物的文件顺序问题**：凡是要随站点发布的文件，必须在部署步骤前生成
 3. **异步验证类 API 的"成功"要打问号**：202 只代表请求被接收，效果要靠线上 key 文件可访问性来保证
+4. **持续 403 且 key 文件确认无误时，换新 key 是最终解法**：IndexNow 服务端会缓存 (host, key) 的失败验证状态，新文件名 = 全新 URL = 干净状态，换 key 立即生效
 
 预期效果：Bing 及 AI 搜索（Copilot、DuckDuckGo）会在新文章发布后几分钟到几小时内发现内容；**收录本身**（进入索引）仍然需要几周时间，这是正常过程。配合前两篇的 sitemap 与 robots.txt 配置，三篇合起来就是一套完整的 GitHub Pages 站点 SEO 方案：
 
