@@ -9,7 +9,7 @@ summary: 排查 Search Console 读取 sitemap 失败的问题，发现项目站�
 description: >-
   排查 Google Search Console 报 "Sitemap could not be read" 的问题，最终定位到 GitHub Pages
   项目站点的 robots.txt 生成在子路径下、域名根 404 的根因，并给出用户主页仓库的解决方案。
-date: 2026-08-05 18:00:00
+date: 2026-08-05 17:00:00
 ---
 
 ---
