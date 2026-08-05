@@ -77,6 +77,8 @@ description: 文章摘要，用于 SEO
   - key 文件位置：`https://littlefish04.github.io/blog/{key}.txt`（子路径即可，推送时通过 `keyLocation` 参数指定，无需放域名根）
   - 端点：`POST https://api.indexnow.org/indexnow`；响应 202 已接受（异步验证，200 亦为成功）、403 key 无效、422 URL 不属于该 host
   - **注意**：Generate key 步骤必须在 Deploy 步骤**之前**（随构建产物一起上传，否则 key 文件 404、推送无效）
+  - key 文件生成用 `printf '%s'` 而非 `echo`（echo 追加换行符，IndexNow 严格比对时可能失败）
+  - **排障**：若 key 文件线上 200、内容正确、无重定向却持续 403 `UserForbiddedToAccessSite`，多为 IndexNow/Bing 缓存了该 key 的失败验证状态（常见触发：部署窗口期 key 文件短暂 404 时 IndexNow 恰好重新验证）。**解决：换新 key**（`openssl rand -hex 32` 生成新 64 位 hex，更新 GitHub Secret `INDEXNOW_KEY`，新文件名 = 全新 URL = 无历史状态，立即生效）。Bing Webmaster Tools 的 XML 站点验证与 IndexNow key 验证是两套独立系统，不影响此问题
   - Google 不支持 IndexNow，Google 侧需在 Search Console 单独提交 sitemap
 
 ## 写作风格
