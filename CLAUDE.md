@@ -75,7 +75,8 @@ description: 文章摘要，用于 SEO
 - **IndexNow 自动推送**（Bing/Yandex/Naver 等）：部署工作流 `pages.yml` 在部署后自动生成 key 文件并推送 sitemap 全部 URL
   - key 存于 GitHub Secret `INDEXNOW_KEY`（64 字符 hex），勿明文写入仓库
   - key 文件位置：`https://littlefish04.github.io/blog/{key}.txt`（子路径即可，推送时通过 `keyLocation` 参数指定，无需放域名根）
-  - 端点：`POST https://api.indexnow.org/indexnow`；响应 200 成功、403 key 无效、422 URL 不属于该 host
+  - 端点：`POST https://api.indexnow.org/indexnow`；响应 202 已接受（异步验证，200 亦为成功）、403 key 无效、422 URL 不属于该 host
+  - **注意**：Generate key 步骤必须在 Deploy 步骤**之前**（随构建产物一起上传，否则 key 文件 404、推送无效）
   - Google 不支持 IndexNow，Google 侧需在 Search Console 单独提交 sitemap
 
 ## 写作风格

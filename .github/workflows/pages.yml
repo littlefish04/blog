@@ -59,7 +59,12 @@ jobs:
       - name: Build Hexo site
         run: npm run build  # 等同于 hexo generate
       
-      # 7. 部署到 gh-pages 分支
+      # 7. 生成 IndexNow key 文件（必须在部署前生成，随构建产物一起上传）
+      # 线上地址：https://littlefish04.github.io/blog/{key}.txt（keyLocation 指向此处，无需放域名根）
+      - name: Generate IndexNow key file
+        run: echo "${{ secrets.INDEXNOW_KEY }}" > public/"${{ secrets.INDEXNOW_KEY }}".txt
+
+      # 8. 部署到 gh-pages 分支
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
@@ -80,11 +85,6 @@ jobs:
           # 可选配置
           allow_empty_commit: true  # 允许空提交
           keep_files: false  # 是否保留 gh-pages 分支上的旧文件（默认 false，会完全替换）
-
-      # 8. 生成 IndexNow key 文件
-      # 部署后可通过 https://littlefish04.github.io/blog/{key}.txt 访问（keyLocation 指向此处，无需放在域名根）
-      - name: Generate IndexNow key file
-        run: echo "${{ secrets.INDEXNOW_KEY }}" > public/"${{ secrets.INDEXNOW_KEY }}".txt
 
       # 9. 通过 IndexNow 推送全部 URL 给搜索引擎（Bing / Yandex / Naver 等）
       # 从构建产物 sitemap.xml 提取 URL（不依赖线上 CDN 缓存），POST 到 api.indexnow.org
@@ -133,7 +133,7 @@ jobs:
           )
           try:
               with urllib.request.urlopen(req, timeout=30) as resp:
-                  print(f"IndexNow OK: HTTP {resp.status}, 共推送 {len(urls)} 个 URL")
+                  print(f"IndexNow 已接受: HTTP {resp.status}, 共推送 {len(urls)} 个 URL")
           except urllib.error.HTTPError as e:
               print(f"IndexNow FAILED: HTTP {e.code}")
               print(e.read().decode(errors="ignore"))
