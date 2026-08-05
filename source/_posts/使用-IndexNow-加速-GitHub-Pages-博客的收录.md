@@ -9,6 +9,7 @@ summary: 通过 IndexNow 协议在 CI 部署后自动向 Bing 等搜索引擎推
 description: >-
   博客部署在 GitHub Pages 子路径后 Bing 迟迟不收录，本文介绍 IndexNow 协议的 key 验证机制、 keyLocation
   解决子路径站点的方法，以及如何在 Hexo 的 GitHub Actions 部署流程中实现全自动推送。
+abbrlink: 4163289872
 date: 2026-08-05 17:56:52
 ---
 
