@@ -1,0 +1,170 @@
+<!DOCTYPE html><html lang="zh-CN" theme="default"><head><meta charset="utf-8"><meta name="google-site-verification" content="w13Lw4hzsSX75i2n0s2ZqP2KvO9NPUVdsnK-LB4VuXA"><meta name="X-UA-Compatible" content="IE=edge"><meta name="author" content="littlefish04"><title>OpenGL 入门学习（一） · littlefish04个人博客</title><meta name="description" content="写在前面在学习 Unity 渲染管线时，我感到十分吃力，许多概念如同天书一般难以理解。经过一番搜索，我发现 Unity 的渲染管线本质上是对 OpenGL 的封装——直接学习 OpenGL 反而能让学习曲线更加平滑，于是决定从这里开始入门图形学。
+笔者使用的是 Windows 系统，博客里的所有操作"><meta name="keywords" content="Blog,博客,Hexo,littlefish04 blog,littlefish04个人博客"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta id="site_data_static" data-url="/blog/"><meta name="renderer" content="webkit"><link rel="shortcut icon" type="image/x-icon" href="/blog/images/favicon.webp"><link rel="stylesheet" href="/blog/js_complied/bundle.css"><link rel="stylesheet" href="/blog/css/font-awesome.min.css"><link rel="alternate" type="application/atom+xml" title="ATOM 1.0" href="/atom.xml"><meta property="og:title" content="OpenGL 入门学习（一） · littlefish04个人博客"><meta property="og:type" content="article"><meta property="og:url" content="https://littlefish04.github.io/blog/posts/3167167368/"><meta property="og:description" content="本文从学习 Unity 渲染管线受阻的痛点出发，讲解为何选择 OpenGL 作为图形学入门起点：OpenGL 本质上是一份接口规范，具体实现由各 GPU 厂商在驱动中完成，因此天然具备跨平台特性。随后手把手演示在 Windows 上搭建 OpenGL 开发环境——下载 GLFW 库、创建 Visual Studio C++ 空项目、配置附加包含目录与附加库目录等依赖项，最终成功运行出第一个 OpenGL 窗口。"><meta property="og:image" content="https://littlefish04.github.io/blog/images/1.png"><meta property="og:site_name" content="littlefish04个人博客"><meta property="og:locale" content="zh_CN"><meta property="article:published_time" content="2026-08-05T02:24:38.000Z"><meta property="article:modified_time" content="2026-08-05T05:08:56.658Z"><meta property="article:tag" content="图形学基础"><meta property="article:tag" content="OpenGL"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="OpenGL 入门学习（一） · littlefish04个人博客"><meta name="twitter:description" content="本文从学习 Unity 渲染管线受阻的痛点出发，讲解为何选择 OpenGL 作为图形学入门起点：OpenGL 本质上是一份接口规范，具体实现由各 GPU 厂商在驱动中完成，因此天然具备跨平台特性。随后手把手演示在 Windows 上搭建 OpenGL 开发环境——下载 GLFW 库、创建 Visual Studio C++ 空项目、配置附加包含目录与附加库目录等依赖项，最终成功运行出第一个 OpenGL 窗口。"><link rel="canonical" href="https://littlefish04.github.io/blog/posts/3167167368/"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"><script src="/blog/js_complied/bundle.js"></script><script>Anatolo.comment.setConfig({"valine":{"enable":false,"appid":null,"appkey":null,"notify":false,"verify":false,"avatar":"mm","placeholder":"hello, world"},"gitment":{"enable":false,"owner":"littlefish04","repo":"Gitment-repo","client_id":"Ov23liQvODT8ulenZPgL","client_secret":"a89a59e18c2b4bc891a5e47b3d876870f5c6dd7a"},"gitalk":{"enable":true,"owner":"littlefish04","repo":"Gitment-repo","client_id":"Ov23liQvODT8ulenZPgL","client_secret":"a89a59e18c2b4bc891a5e47b3d876870f5c6dd7a"},"duoshuo":null,"disqus":null,"gentie":null})</script><link rel="stylesheet" href="/blog/css/comments/gittalk.css"><script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script><meta name="generator" content="Hexo 8.1.2"><style>mjx-container[jax="SVG"] {
+  direction: ltr;
+}
+
+mjx-container[jax="SVG"] > svg {
+  overflow: visible;
+}
+
+mjx-container[jax="SVG"][display="true"] {
+  display: block;
+  text-align: center;
+  margin: 1em 0;
+}
+
+mjx-container[jax="SVG"][justify="left"] {
+  text-align: left;
+}
+
+mjx-container[jax="SVG"][justify="right"] {
+  text-align: right;
+}
+
+g[data-mml-node="merror"] > g {
+  fill: red;
+  stroke: red;
+}
+
+g[data-mml-node="merror"] > rect[data-background] {
+  fill: yellow;
+  stroke: none;
+}
+
+g[data-mml-node="mtable"] > line[data-line] {
+  stroke-width: 70px;
+  fill: none;
+}
+
+g[data-mml-node="mtable"] > rect[data-frame] {
+  stroke-width: 70px;
+  fill: none;
+}
+
+g[data-mml-node="mtable"] > .mjx-dashed {
+  stroke-dasharray: 140;
+}
+
+g[data-mml-node="mtable"] > .mjx-dotted {
+  stroke-linecap: round;
+  stroke-dasharray: 0,140;
+}
+
+g[data-mml-node="mtable"] > svg {
+  overflow: visible;
+}
+
+[jax="SVG"] mjx-tool {
+  display: inline-block;
+  position: relative;
+  width: 0;
+  height: 0;
+}
+
+[jax="SVG"] mjx-tool > mjx-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+mjx-tool > mjx-tip {
+  display: inline-block;
+  padding: .2em;
+  border: 1px solid #888;
+  font-size: 70%;
+  background-color: #F8F8F8;
+  color: black;
+  box-shadow: 2px 2px 5px #AAAAAA;
+}
+
+g[data-mml-node="maction"][data-toggle] {
+  cursor: pointer;
+}
+
+mjx-status {
+  display: block;
+  position: fixed;
+  left: 1em;
+  bottom: 1em;
+  min-width: 25%;
+  padding: .2em .4em;
+  border: 1px solid #888;
+  font-size: 90%;
+  background-color: #F8F8F8;
+  color: black;
+}
+
+foreignObject[data-mjx-xml] {
+  font-family: initial;
+  line-height: normal;
+  overflow: visible;
+}
+
+.MathJax path {
+  stroke-width: 3;
+}
+
+mjx-container[display="true"] {
+  overflow: auto hidden;
+}
+
+mjx-container[display="true"] + br {
+  display: none;
+}
+</style></head><body> <main-outlet><div class="page-top animated"><div class="nav"><li><a href="/blog/">首页</a></li><li><a href="/blog/archives">归档</a></li><li><a href="/blog/categories">分类</a></li><li><a href="/blog/tags">标签</a></li></div><div class="information"><div class="nav_right_btn"><li class="btn-toggle-more"><i class="fa fa-ellipsis"></i></li><li class="btn-go-back"><a class="fa fa-chevron-left" onclick="window.history.go(-1)"> </a></li><li class="btn-search"><a class="fa fa-search" onclick="Anatolo.search.openWindow();"></a></li><li class="btn-toggle-theme"><a class="far fa-sun" onclick="Anatolo.darkLightToggle();"></a></li></div><div class="avatar"><img src="/blog/images/logo.webp"></div></div></div><div class="toc-mobile"><div class="toc-button"><span>目录</span></div><div class="toc-container in-page animated fadeInDown"><div class="toclist-container"><div class="tocmenu"><ol class="toclist"><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E5%86%99%E5%9C%A8%E5%89%8D%E9%9D%A2"><span class="toclist-text">写在前面</span></a></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E4%B8%80%E3%80%81%E4%BB%80%E4%B9%88%E6%98%AF-OpenGL"><span class="toclist-text">一、什么是 OpenGL</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#OpenGL-%E7%9A%84%E8%B7%A8%E5%B9%B3%E5%8F%B0%E7%89%B9%E6%80%A7"><span class="toclist-text">OpenGL 的跨平台特性</span></a></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%AD%A6%E4%B9%A0-OpenGL"><span class="toclist-text">为什么学习 OpenGL</span></a></li></ol></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E4%BA%8C%E3%80%81%E8%AE%BE%E7%BD%AE-OpenGL-%E5%92%8C%E5%88%9B%E5%BB%BA%E7%AA%97%E5%8F%A3"><span class="toclist-text">二、设置 OpenGL 和创建窗口</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#2-1-%E4%B8%8B%E8%BD%BD-GLFW-%E5%BA%93"><span class="toclist-text">2.1 下载 GLFW 库</span></a></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#2-2-%E5%88%9B%E5%BB%BA-VS-C-%E9%A1%B9%E7%9B%AE"><span class="toclist-text">2.2 创建 VS C++ 项目</span></a></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#2-3-%E6%B7%BB%E5%8A%A0%E5%BA%93%E4%BE%9D%E8%B5%96"><span class="toclist-text">2.3 添加库依赖</span></a></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#2-4-%E8%BF%90%E8%A1%8C%E7%A8%8B%E5%BA%8F"><span class="toclist-text">2.4 运行程序</span></a></li></ol></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toclist-text">参考资料</span></a></li></ol></div></div></div></div><div class="sidebar animated"><div class="sidebar-top"><div class="logo-title"><div class="title"><img src="/blog/images/logo@2x.webp" style="width:220px;" alt="favicon"><h3 title=""><a href="/">littlefish04个人博客</a></h3><div class="description"><p>记录一些学习过程</p></div></div><ul class="social-links"><li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/littlefish04"><i class="fab fa-github"></i></a></li><li><a href="mailto:littlefish04@163.com" rel="external nofollow noreferrer"><i class="fa fa-envelope"></i></a></li></ul></div><div class="toc-container in-sidebar animated fadeInDown"><details class="ltr" open><summary>目录</summary><div class="toclist-container"><div class="tocmenu"><ol class="toclist"><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E5%86%99%E5%9C%A8%E5%89%8D%E9%9D%A2"><span class="toclist-text">写在前面</span></a></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E4%B8%80%E3%80%81%E4%BB%80%E4%B9%88%E6%98%AF-OpenGL"><span class="toclist-text">一、什么是 OpenGL</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#OpenGL-%E7%9A%84%E8%B7%A8%E5%B9%B3%E5%8F%B0%E7%89%B9%E6%80%A7"><span class="toclist-text">OpenGL 的跨平台特性</span></a></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%AD%A6%E4%B9%A0-OpenGL"><span class="toclist-text">为什么学习 OpenGL</span></a></li></ol></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E4%BA%8C%E3%80%81%E8%AE%BE%E7%BD%AE-OpenGL-%E5%92%8C%E5%88%9B%E5%BB%BA%E7%AA%97%E5%8F%A3"><span class="toclist-text">二、设置 OpenGL 和创建窗口</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#2-1-%E4%B8%8B%E8%BD%BD-GLFW-%E5%BA%93"><span class="toclist-text">2.1 下载 GLFW 库</span></a></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#2-2-%E5%88%9B%E5%BB%BA-VS-C-%E9%A1%B9%E7%9B%AE"><span class="toclist-text">2.2 创建 VS C++ 项目</span></a></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#2-3-%E6%B7%BB%E5%8A%A0%E5%BA%93%E4%BE%9D%E8%B5%96"><span class="toclist-text">2.3 添加库依赖</span></a></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#2-4-%E8%BF%90%E8%A1%8C%E7%A8%8B%E5%BA%8F"><span class="toclist-text">2.4 运行程序</span></a></li></ol></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toclist-text">参考资料</span></a></li></ol></div></div></details></div></div><div class="footer"><div class="p"><span>学习是条漫漫长路。 </span><i class="fa fa-star"></i><span> littlefish04</span></div><div class="by_farbox"><span>Powered by</span><a href="https://hexo.io/zh-cn/" rel="external nofollow noreferrer" target="_blank"> Hexo</a><span> &</span><a href="https://github.com/Lhcfl/hexo-theme-anatolo" rel="external nofollow noreferrer" target="_blank"> Anatolo</a></div><div class="beian"></div></div></div><div class="main animated fadeInDown"><div class="autopagerize_page_element"><div class="content"><div class="post-page"><div class="post animated"><div class="post-title"><h3><a>OpenGL 入门学习（一）</a></h3></div><div class="post-content"><p><hr>
+<h2 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h2><p>在学习 Unity 渲染管线时，我感到十分吃力，许多概念如同天书一般难以理解。经过一番搜索，我发现 Unity 的渲染管线本质上是对 OpenGL 的封装——直接学习 OpenGL 反而能让学习曲线更加平滑，于是决定从这里开始入门图形学。</p>
+<p>笔者使用的是 Windows 系统，博客里的所有操作均在 Windows 系统下完成。理论上我参考的教程也可以在 macOS 上完成，但该博客不涉及相关知识。</p>
+<p>部分内容为ai生成，如有错误恳请指出。</p>
+<hr>
+<h2 id="一、什么是-OpenGL"><a href="#一、什么是-OpenGL" class="headerlink" title="一、什么是 OpenGL"></a>一、什么是 OpenGL</h2><p>OpenGL 本质上是一个<strong>规范（Specification）</strong>，它定义了一系列接口，开发者通过这些接口可以操作 GPU 完成图形渲染工作。</p>
+<p>所谓接口，通俗来说就是规定了函数的名称、接收的参数、返回值以及函数的作用——它只告诉你”能做什么”和”怎么调用”，而不暴露内部的实现细节。对于调用者而言，只需要知道接口的定义就能使用，完全无需关心底层是如何实现的。</p>
+<p>OpenGL 仅仅是一份规范，本身并不包含任何函数的具体实现。真正的实现代码在哪里呢？答案是在 GPU 驱动中，由各个 GPU 厂商（如 NVIDIA、AMD、Intel 等）自行完成。当我们调用 OpenGL API 时，实际执行的是厂商在驱动层编写好的函数。</p>
+<p>由于不同厂商的实现方式各不相同，同一段 OpenGL 代码在不同平台上的表现可能会出现差异。比如某段代码在 NVIDIA 显卡上运行良好，在 AMD 显卡上却可能出现意料之外的 Bug。此外，大部分 GPU 厂商并不会开源自己的驱动代码，因此开发者通常无从得知这些函数底层的具体实现细节。</p>
+<h3 id="OpenGL-的跨平台特性"><a href="#OpenGL-的跨平台特性" class="headerlink" title="OpenGL 的跨平台特性"></a>OpenGL 的跨平台特性</h3><p>既然 OpenGL 只是一套接口规范，具体实现由各个平台的厂商分别完成，那么它的跨平台特性就很好理解了：只要某个平台实现了 OpenGL 规范，OpenGL 代码就能在该平台上运行。</p>
+<p>对于个人开发者而言，使用 OpenGL 可以方便地将应用发布到多个平台。不过需要注意的是，许多平台对 OpenGL 的实现质量并不如其原生图形 API——底层的驱动优化可能不够充分、接口使用起来也不够便捷。因此，对于大型游戏项目来说，针对不同平台分别使用各自的原生图形 API（如 Windows 上的 DirectX、Apple 平台上的 Metal）也是常见的做法。</p>
+<h3 id="为什么学习-OpenGL"><a href="#为什么学习-OpenGL" class="headerlink" title="为什么学习 OpenGL"></a>为什么学习 OpenGL</h3><p>你可能也听说过其他图形 API，比如 DirectX、Vulkan 等，或许还了解到这些 API 在某些方面性能更好、功能更强。那么为什么仍然选择从 OpenGL 入门呢？</p>
+<p>除了前面提到的——Unity 的渲染管线封装自 OpenGL——另一个重要原因是：OpenGL 在一众图形 API 中是<strong>相对最简单</strong>的，非常适合初学者作为图形学入门的起点。</p>
+<p>此外，许多其他图形 API 在设计上也会提供对 OpenGL 概念的兼容或封装，学好 OpenGL 所打下的基础，在后续学习其他图形 API 时同样用得上。</p>
+<hr>
+<h2 id="二、设置-OpenGL-和创建窗口"><a href="#二、设置-OpenGL-和创建窗口" class="headerlink" title="二、设置 OpenGL 和创建窗口"></a>二、设置 OpenGL 和创建窗口</h2><h3 id="2-1-下载-GLFW-库"><a href="#2-1-下载-GLFW-库" class="headerlink" title="2.1 下载 GLFW 库"></a>2.1 下载 GLFW 库</h3><p>首先，我们需要一个简单方便的创建窗口的方法。这里使用 GLFW 库——一个专门用于创建窗口和处理输入的 C 语言库，可以在 <a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.glfw.org/">An OpenGL library | GLFW</a> 官网下载。</p>
+<p>进入网站后，点击右上角菜单栏的 <code>Download</code>，进入下图所示页面。</p>
+<p><img src="/blog/posts/3167167368/1785899291714.png" alt="78589929171"></p>
+<p>根据需要下载 Windows 64 位或 Windows 32 位预编译包。需要注意的是，这里的 64 位和 32 位并不是指操作系统（现在的操作系统基本都是 64 位），而是指你使用该库的项目最终编译出来的应用程序是 64 位还是 32 位，下载前请先确认项目的目标平台。笔者下载的是 64 位。</p>
+<h3 id="2-2-创建-VS-C-项目"><a href="#2-2-创建-VS-C-项目" class="headerlink" title="2.2 创建 VS C++ 项目"></a>2.2 创建 VS C++ 项目</h3><p>创建一个名为 <code>OpenGL</code> 的 C++ 项目，使用空项目模板。</p>
+<p><img src="/blog/posts/3167167368/1785899804920.png" alt="78589980492"></p>
+<p>在解决方案资源管理器顶部的工具栏中点击”显示所有文件”，就能看到项目根目录下的文件。</p>
+<p>在项目根目录下创建 <code>src</code> 和 <code>Dependencies</code> 两个文件夹，然后在 <code>src</code> 文件夹下创建 <code>Application.cpp</code> 文件。（图里的 Application 拼写错了，不要管它）</p>
+<p><img src="/blog/posts/3167167368/1785899987760.png" alt="78589998776"></p>
+<p>接下来再次打开 <a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.glfw.org/">An OpenGL library | GLFW</a>，进入右上角菜单栏的 <code>Documentation</code> 页面，页面中给出的 <code>Example code</code> 会创建一个最简单的窗口。复制这段代码，全部粘贴到 <code>Application.cpp</code> 里。</p>
+<p><img src="/blog/posts/3167167368/1785900313897.png" alt="78590031389"></p>
+<p>此时可以看到 <code>Application.cpp</code> 里出现了很多红色波浪线，这是编辑器给出的错误提示。原因是我们还没有把 GLFW 库添加到项目中。</p>
+<h3 id="2-3-添加库依赖"><a href="#2-3-添加库依赖" class="headerlink" title="2.3 添加库依赖"></a>2.3 添加库依赖</h3><p>首先打开之前下载好的 GLFW 压缩包，可以看到里面有 <code>include</code> 文件夹和一堆 <code>lib-</code> 开头的文件夹。</p>
+<p>在项目的 <code>Dependencies</code> 文件夹下创建一个新文件夹 <code>GLFW</code>，然后把 <code>include</code> 文件夹和 <code>lib-vc2022</code> 两个文件夹复制粘贴到该文件夹下。</p>
+<p>GLFW 压缩包里提供了多个不同版本的 <code>lib-vc</code> 文件夹，除了 2022 也可以选择其他版本，都能正常使用。</p>
+<p><img src="/blog/posts/3167167368/1785900847883.png" alt="78590084788"></p>
+<p>进入复制过来的 <code>lib-vc2022</code> 文件夹，把 <code>.dll</code> 文件和 <code>dll.lib</code> 文件删掉。这两个是动态链接时才会用到的动态库文件，我们的应用只需要静态链接，用不到它们。</p>
+<p>删完后文件夹下应该还剩两个文件：</p>
+<p><img src="/blog/posts/3167167368/1785901233595.png" alt="78590123359"></p>
+<p>接下来配置 VS 项目：在解决方案资源管理器中右键项目根目录，选择”属性”。</p>
+<p><img src="/blog/posts/3167167368/1785900509806.png" alt="78590050980"></p>
+<p>进入属性页后，先把左上角的配置改为”所有配置”：</p>
+<p><img src="/blog/posts/3167167368/1785901339768.png" alt="78590133976"></p>
+<p>然后在 <code>C/C++ -&gt; 常规 -&gt; 附加包含目录</code> 里写上：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$(SolutionDir)Dependencies\GLFW\include</span><br></pre></td></tr></table></figure>
+
+<p>其中 <code>$(SolutionDir)</code> 是 VS 自带的宏，表示解决方案所在的目录（本项目解决方案和项目位于同一目录，所以这里也就是项目根目录）。这一步设置的是 GLFW 库的头文件搜索目录。</p>
+<p>接着在 <code>链接器 -&gt; 常规 -&gt; 附加库目录</code> 里写上：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$(SolutionDir)Dependencies\GLFW\lib-vc2022</span><br></pre></td></tr></table></figure>
+
+<p><img src="/blog/posts/3167167368/1785904012174.png" alt="78590401217"></p>
+<p>这一步设置的是链接器的库文件搜索目录。</p>
+<p>最后在 <code>链接器 -&gt; 输入 -&gt; 附加依赖项</code> 里加上 <code>opengl32.lib</code> 和 <code>glfw3.lib</code>。其中 <code>opengl32.lib</code> 是 Windows 平台上用来链接 OpenGL 函数的系统库，VS 已经帮我们装好；<code>glfw3.lib</code> 则是我们下载的 GLFW 静态库。</p>
+<p><img src="/blog/posts/3167167368/1785904101423.png" alt="78590410142"></p>
+<h3 id="2-4-运行程序"><a href="#2-4-运行程序" class="headerlink" title="2.4 运行程序"></a>2.4 运行程序</h3><p>现在依赖都配置好了，按 <code>F5</code> 运行程序试试。</p>
+<p><img src="/blog/posts/3167167368/1785904468315.png" alt="78590446831"></p>
+<p>程序运行成功，屏幕上出现了一个窗口。</p>
+<hr>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.bilibili.com/video/BV1Ni4y1o7Au/?spm_id_from=333.337.search-card.all.click&amp;vd_source=b620703bd4c9a236a25ac8bf0c1f6f5c">【双语】【TheCherno】OpenGL_哔哩哔哩_bilibili</a></li>
+</ul>
+</p></div><div class="post-footer"><div class="tip">本文为原创，转载请注明出处<br>作者: littlefish04</div><div class="meta"><div class="info"><i class="fa fa-sun-o"></i><span class="date">2026-08-05</span><a class="tag" href="/blog/categories/OpenGL-学习/" title="OpenGL 学习">OpenGL 学习 </a><i class="fa fa-tag"></i><a class="tag" href="/blog/tags/图形学基础/" title="图形学基础">图形学基础 </a><i class="fa fa-tag"></i><a class="tag" href="/blog/tags/OpenGL/" title="OpenGL">OpenGL </a><span>大约1909个字, 6分钟21秒读完</span></div></div></div></div><div class="share"><div class="share-btn linkonly"><a class="fa fa-link" onclick="Utils.copyToClipboard(window.location.href)" ref="sidebar"></a></div><div class="share-btn evernote"><a class="fa fa-share" onclick="Anatolo.share.native()" ref="sidebar"></a></div><div class="share-btn weibo"><a class="fab fa-weibo" href="javascript:void((function(s,d,e){try{}catch(e){}var f=' rel="external nofollow noreferrer"http://service.weibo.com/share/share.php?',u=d.location.href,p=['url=',e(u),'&amp;title=',e(d.title),'&amp;appkey=2924220432'].join('');function a(){if(!window.open([f,p].join(''),'mb',['toolbar=0,status=0,resizable=1,width=620,height=450,left=',(s.width-620)/2,',top=',(s.height-450)/2].join('')))u.href=[f,p].join('');};if(/Firefox/.test(navigator.userAgent)){setTimeout(a,0)}else{a()}})(screen,document,encodeURIComponent));"></a></div><div class="share-btn twitter"><a class="fab fa-twitter" target="_blank" rel="noopener external nofollow noreferrer" href="http://twitter.com/intent/tweet?text=%E5%88%86%E4%BA%AB%E6%96%87%E7%AB%A0%EF%BC%9A%0A%0Alittlefish04%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2%20%C2%B7%20OpenGL%20%E5%85%A5%E9%97%A8%E5%AD%A6%E4%B9%A0%EF%BC%88%E4%B8%80%EF%BC%89%0Ahttps://littlefish04.github.io/blog/posts/3167167368/%0A"></a></div><div class="share-btn mastodon"><a class="fab fa-mastodon" target="_blank" rel="noopener external nofollow noreferrer" href="https://mastodonshare.com/?text=%E5%88%86%E4%BA%AB%E6%96%87%E7%AB%A0%EF%BC%9A%0A%0Alittlefish04%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2%20%C2%B7%20OpenGL%20%E5%85%A5%E9%97%A8%E5%AD%A6%E4%B9%A0%EF%BC%88%E4%B8%80%EF%BC%89%0Ahttps://littlefish04.github.io/blog/posts/3167167368/%0A"></a></div></div><div class="pagination"><ul class="clearfix"><li class="pre pagbuttons"><a class="btn" role="navigation" href="/blog/posts/2548690783/">上一篇：Quaternion 四元数</a></li></ul></div><script>Anatolo.comment.setConfig({"valine":{"enable":false,"appid":null,"appkey":null,"notify":false,"verify":false,"avatar":"mm","placeholder":"hello, world"},"gitment":{"enable":false,"owner":"littlefish04","repo":"Gitment-repo","client_id":"Ov23liQvODT8ulenZPgL","client_secret":"a89a59e18c2b4bc891a5e47b3d876870f5c6dd7a"},"gitalk":{"enable":true,"owner":"littlefish04","repo":"Gitment-repo","client_id":"Ov23liQvODT8ulenZPgL","client_secret":"a89a59e18c2b4bc891a5e47b3d876870f5c6dd7a"},"duoshuo":null,"disqus":null,"gentie":null})</script><a id="comments"></a><div id="gitalk_container" style="padding: 10px"></div></div></div></div></div></main-outlet><script>(async function(){ if (Anatolo.search == null) await Anatolo.getMsg("search-init"); Anatolo.search.config = {translation:{posts:"文章",pages:"页面",categories:"分类",tags:"标签",untitled:"(无标题)",} }; })()</script><div class="searchbox ins-search modal-cover"><div class="searchbox-container ins-search-container modal-container"><div class="searchbox-input-wrapper"><input class="searchbox-input ins-search-input" type="text" placeholder="想要查找什么..."><span class="searchbox-close"><a class="fa fa-times-circle" onclick="Anatolo.search.closeWindow();"></a></span></div><div class="searchbox-result-wrapper ins-section-wrapper"><div class="ins-section-container"><p>Seraching...</p></div></div></div></div><button class="float-button hide" id="scroll-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" type="button" title="回到顶部"><i class="fa fa-angle-up"></i></button><div class="modal-cover" id="success-indicator"><div class="modal-container indicator"><i class="fa fa-check"></i></div></div></body></html>
