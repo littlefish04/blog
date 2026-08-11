@@ -5,12 +5,13 @@ tags:
   - Codex
 categories: AI Agent 相关
 toc: true
-date: 2026-08-11 16:51:27
 summary: Claude Code 转 Codex CLI 迁移笔记：会话管理、AGENTS.md 配置与外部编辑器调用的对应操作。
 description: >-
   本文记录了从 Claude Code 切换到 Codex CLI 的常用操作对照：如何用 /clear 与 codex resume --last
   管理会话，如何将 CLAUDE.md 迁移为 AGENTS.md（或用 project_doc_fallback_filenames 共用一份配置），
   以及如何通过 Ctrl+G 调用外部编辑器。内容参考官方仓库文档与源码整理，帮助迁移后无缝衔接日常开发。
+abbrlink: 4063271163
+date: 2026-08-11 16:51:27
 ---
 
 ---
@@ -40,6 +41,8 @@ Codex 和 Claude Code 一样，会话会自动保存，退出时无需任何额�
 日常最常用的是 `codex resume --last`：它相当于 Claude Code 的 `claude --continue`，无需经过选择器就能直接回到上一次的工作现场。
 </div>
 
+---
+
 ## 二、CLAUDE.md 的对应物：AGENTS.md
 
 Codex 的对应物是 `AGENTS.md`，每次新会话都会自动读取。查找层级自上而下合并：
@@ -67,6 +70,8 @@ project_doc_fallback_filenames = ["CLAUDE.md"]
 
 另外，Codex 还内置了两个对迁移很有帮助的命令：`/import` 可以直接导入 Claude Code 的设置、项目文件和最近的聊天记录；`/init` 可以生成一份 `AGENTS.md` 模板，方便在新项目中快速起步。
 
+---
+
 ## 三、用 Ctrl+G 打开外部编辑器
 
 在输入框中按 `Ctrl+G`，会用外部编辑器打开当前草稿；保存并关闭后，内容会回到输入框，确认无误后再发送。
@@ -81,6 +86,8 @@ setx VISUAL "code --wait"     # 永久生效
 第一行只对当前终端会话生效；第二行通过 `setx` 写入用户环境变量，需要重新打开终端才会生效。`notepad` 也可以作为编辑器，只是体验一般。如需自定义键位，可以在 TUI 中使用 `/keymap` 查看和调整（对应的动作名为 `open_external_editor`）。
 
 > 补充说明：`developers.openai.com` 与 `learn.chatgpt.com` 从笔者所在网络抓取均被拒绝（403/代理错误），因此以上内容依据官方 `openai/codex` 仓库的文档与源码确认，并与本机 `codex --help` 的输出核对过，命令部分与当前安装版本一致。若个别行为存在出入，以 `codex --help` 和 TUI 内的 `/help` 为准。
+
+---
 
 ## 小结
 

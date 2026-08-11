@@ -1,0 +1,407 @@
+@charset "UTF-8";
+/* ============================================================
+   GitHub 内容样式（移植自 Typora 的 github 主题）
+   仅作用于文章正文容器 .post-content，不影响站点其他部分。
+   浅色模式与 Typora GitHub 主题一致；暗色模式使用 GitHub Dark 配色。
+   ============================================================ */
+
+/* ---------- 配色变量 ---------- */
+.post-page .post .post-content {
+  /* 浅色（Typora GitHub） */
+  --gh-text: #333333;
+  --gh-link: #4183c4;
+  --gh-code-bg: #f8f8f8;
+  --gh-code-border: #dddddd;
+  --gh-code-text: #333333;
+  --gh-pre-bg: #f8f8f8;
+  --gh-pre-border: #dddddd;
+  --gh-pre-text: #333333;
+  --gh-quote-border: #dddddd;
+  --gh-quote-text: #777777;
+  --gh-heading-border: #eeeeee;
+  --gh-heading6: #777777;
+  --gh-table-border: #cccccc;
+  --gh-table-stripe: #f8f8f8;
+  --gh-hr-bg: #e7e7e7;
+  --gh-hr-border: #dddddd;
+  --gh-gutter: #999999;
+  --gh-hl-keyword: #a71d5d;
+  --gh-hl-string: #183691;
+  --gh-hl-number: #0086b3;
+  --gh-hl-comment: #969896;
+  --gh-hl-title: #795da3;
+  --gh-hl-tag: #63a35c;
+  --gh-hl-attribute: #795da3;
+  --gh-hl-symbol: #0086b3;
+  --gh-hl-addition: #22863a;
+  --gh-hl-deletion: #b31d28;
+  --gh-hl-variable: #333333;
+}
+
+/* 暗色：default 模式跟随系统偏好（与主题自身的暗色逻辑一致） */
+@media (prefers-color-scheme: dark) {
+  html[theme='default'] .post-page .post .post-content {
+    --gh-text: #e6edf3;
+    --gh-link: #58a6ff;
+    --gh-code-bg: rgba(110, 118, 129, 0.4);
+    --gh-code-border: transparent;
+    --gh-code-text: #e6edf3;
+    --gh-pre-bg: #161b22;
+    --gh-pre-border: #30363d;
+    --gh-pre-text: #e6edf3;
+    --gh-quote-border: #30363d;
+    --gh-quote-text: #8b949e;
+    --gh-heading-border: #30363d;
+    --gh-heading6: #8b949e;
+    --gh-table-border: #30363d;
+    --gh-table-stripe: #161b22;
+    --gh-hr-bg: #21262d;
+    --gh-hr-border: #30363d;
+    --gh-gutter: #6e7681;
+    --gh-hl-keyword: #ff7b72;
+    --gh-hl-string: #a5d6ff;
+    --gh-hl-number: #79c0ff;
+    --gh-hl-comment: #8b949e;
+    --gh-hl-title: #d2a8ff;
+    --gh-hl-tag: #7ee787;
+    --gh-hl-attribute: #ffa657;
+    --gh-hl-symbol: #79c0ff;
+    --gh-hl-addition: #7ee787;
+    --gh-hl-deletion: #ff7b72;
+    --gh-hl-variable: #e6edf3;
+  }
+}
+
+/* 暗色：强制 dark 模式 */
+html[theme='dark'] .post-page .post .post-content {
+  --gh-text: #e6edf3;
+  --gh-link: #58a6ff;
+  --gh-code-bg: rgba(110, 118, 129, 0.4);
+  --gh-code-border: transparent;
+  --gh-code-text: #e6edf3;
+  --gh-pre-bg: #161b22;
+  --gh-pre-border: #30363d;
+  --gh-pre-text: #e6edf3;
+  --gh-quote-border: #30363d;
+  --gh-quote-text: #8b949e;
+  --gh-heading-border: #30363d;
+  --gh-heading6: #8b949e;
+  --gh-table-border: #30363d;
+  --gh-table-stripe: #161b22;
+  --gh-hr-bg: #21262d;
+  --gh-hr-border: #30363d;
+  --gh-gutter: #6e7681;
+  --gh-hl-keyword: #ff7b72;
+  --gh-hl-string: #a5d6ff;
+  --gh-hl-number: #79c0ff;
+  --gh-hl-comment: #8b949e;
+  --gh-hl-title: #d2a8ff;
+  --gh-hl-tag: #7ee787;
+  --gh-hl-attribute: #ffa657;
+  --gh-hl-symbol: #79c0ff;
+  --gh-hl-addition: #7ee787;
+  --gh-hl-deletion: #ff7b72;
+  --gh-hl-variable: #e6edf3;
+}
+
+/* ---------- 基础排版 ---------- */
+.post-page .post .post-content {
+  font-family: 'Open Sans', 'Clear Sans', 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--gh-text);
+}
+
+.content .post-page .post .post-content p {
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0.8em 0;
+  word-break: normal !important;
+  word-wrap: normal !important;
+}
+
+/* 主题模板在正文外包了一层空的 <p>，隐藏掉避免顶部多余间距 */
+.post-page .post .post-content > p:first-child:empty {
+  display: none;
+}
+
+/* 列表项间距（与 Typora 一致） */
+.post-page .post .post-content li {
+  margin: 0.5em 0;
+}
+
+.post-page .post .post-content li p {
+  margin: 0.5em 0;
+}
+
+/* ---------- 链接 ---------- */
+.post-page .post .post-content a {
+  color: var(--gh-link);
+}
+
+.post-page .post .post-content a:hover {
+  color: var(--gh-link);
+  text-decoration: underline;
+}
+
+/* ---------- 标题 ---------- */
+.post-page .post .post-content h1,
+.post-page .post .post-content h2,
+.post-page .post .post-content h3,
+.post-page .post .post-content h4,
+.post-page .post .post-content h5,
+.post-page .post .post-content h6 {
+  position: relative;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  font-weight: bold;
+  line-height: 1.4;
+  color: var(--gh-text);
+}
+
+.post-page .post .post-content h1 {
+  padding-bottom: 0.3em;
+  font-size: 2.25em;
+  line-height: 1.2;
+  border-bottom: 1px solid var(--gh-heading-border);
+}
+
+.post-page .post .post-content h2 {
+  padding-bottom: 0.3em;
+  font-size: 1.75em;
+  line-height: 1.225;
+  border-bottom: 1px solid var(--gh-heading-border);
+}
+
+.post-page .post .post-content h3 {
+  font-size: 1.5em;
+  line-height: 1.43;
+}
+
+.post-page .post .post-content h4 {
+  font-size: 1.25em;
+}
+
+.post-page .post .post-content h5 {
+  font-size: 1em;
+}
+
+.post-page .post .post-content h6 {
+  font-size: 1em;
+  color: var(--gh-heading6);
+}
+
+/* ---------- 行内代码 ---------- */
+.post-page .post .post-content code,
+.post-page .post .post-content tt {
+  border: 1px solid var(--gh-code-border);
+  background-color: var(--gh-code-bg);
+  border-radius: 3px;
+  padding: 2px 4px 0;
+  font-family: Consolas, 'Liberation Mono', Courier, monospace;
+  font-size: 0.9em;
+  color: var(--gh-code-text);
+  white-space: pre-wrap;
+}
+
+/* 代码块容器与行号完全沿用主题原有样式，这里仅防止正文表格样式侵入 */
+.post-page .post .post-content figure.highlight table {
+  width: 100% !important;
+  border: none !important;
+  margin: 0 !important;
+  border-collapse: collapse !important;
+}
+
+.post-page .post .post-content figure.highlight tr,
+.post-page .post .post-content figure.highlight td,
+.post-page .post .post-content figure.highlight th {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* 恢复主题给行号列设置的宽度与右侧间距 */
+.post-page .post .post-content figure.highlight .gutter {
+  width: fit-content !important;
+  padding: 0 1em 0 0 !important;
+}
+
+/* ---------- 普通表格 ---------- */
+.post-page .post .post-content table {
+  margin: 0.8em 0;
+  width: auto;
+  max-width: 100%;
+  border: 1px solid var(--gh-table-border);
+  border-collapse: collapse;
+  background-color: transparent;
+}
+
+.post-page .post .post-content tr {
+  border-top: 1px solid var(--gh-table-border);
+  margin: 0;
+  padding: 0;
+}
+
+.post-page .post .post-content tr:nth-child(2n) {
+  background-color: var(--gh-table-stripe);
+}
+
+.post-page .post .post-content table tbody > tr:nth-child(odd) > td {
+  background-color: transparent;
+}
+
+.post-page .post .post-content tr th,
+.post-page .post .post-content tr td {
+  border: 1px solid var(--gh-table-border);
+  text-align: left;
+  margin: 0;
+  padding: 6px 13px;
+}
+
+.post-page .post .post-content tr th {
+  font-weight: bold;
+  border-bottom: 0;
+  background: transparent;
+  color: var(--gh-text);
+}
+
+/* ---------- 引用 ---------- */
+.post-page .post .post-content blockquote {
+  border-left: 4px solid var(--gh-quote-border);
+  padding: 0 15px;
+  color: var(--gh-quote-text);
+  background: transparent;
+  margin: 0.8em 0;
+}
+
+.post-page .post .post-content blockquote p {
+  padding: 0;
+  margin: 0.8em 0;
+}
+
+.post-page .post .post-content blockquote blockquote {
+  padding-right: 0;
+}
+
+/* ---------- 分隔线 ---------- */
+.post-page .post .post-content hr {
+  height: 4px;
+  padding: 0;
+  margin: 16px 0;
+  background-color: var(--gh-hr-bg);
+  border: 0 none;
+  border-bottom: 1px solid var(--gh-hr-border);
+  overflow: hidden;
+  box-sizing: content-box;
+}
+
+/* ---------- 列表 ---------- */
+.post-page .post .post-content ul,
+.post-page .post .post-content ol {
+  padding-left: 30px;
+  margin: 0.8em 0;
+}
+
+.post-page .post .post-content li > ul,
+.post-page .post .post-content li > ol {
+  margin: 0;
+}
+
+/* ---------- 任务列表 ---------- */
+.post-page .post .post-content .task-list-item {
+  list-style: none;
+}
+
+.post-page .post .post-content .task-list-item input[type='checkbox'] {
+  margin: 0 0.2em 0.25em -1.6em;
+  vertical-align: middle;
+}
+
+/* ---------- 语法高亮配色（GitHub 风格，仅覆盖文字颜色） ---------- */
+.post-page .post .post-content figure.highlight pre .function .keyword,
+.post-page .post .post-content figure.highlight pre .keyword,
+.post-page .post .post-content figure.highlight pre .attr_selector,
+.post-page .post .post-content figure.highlight pre .pseudo {
+  color: var(--gh-hl-keyword) !important;
+}
+
+.post-page .post .post-content figure.highlight pre .string,
+.post-page .post .post-content figure.highlight pre .subst,
+.post-page .post .post-content figure.highlight pre .value,
+.post-page .post .post-content figure.highlight pre .regexp,
+.post-page .post .post-content figure.highlight pre .haskell .type,
+.post-page .post .post-content figure.highlight pre .preprocessor,
+.post-page .post .post-content figure.highlight pre .ruby .class .parent,
+.post-page .post .post-content figure.highlight pre .built_in,
+.post-page .post .post-content figure.highlight pre .sql .aggregate,
+.post-page .post .post-content figure.highlight pre .django .template_tag,
+.post-page .post .post-content figure.highlight pre .django .variable,
+.post-page .post .post-content figure.highlight pre .smalltalk .class,
+.post-page .post .post-content figure.highlight pre .javadoc,
+.post-page .post .post-content figure.highlight pre .django .filter .argument,
+.post-page .post .post-content figure.highlight pre .smalltalk .localvars,
+.post-page .post .post-content figure.highlight pre .smalltalk .array,
+.post-page .post .post-content figure.highlight pre .stream,
+.post-page .post .post-content figure.highlight pre .envvar,
+.post-page .post .post-content figure.highlight pre .apache .tag,
+.post-page .post .post-content figure.highlight pre .apache .cbracket,
+.post-page .post .post-content figure.highlight pre .tex .command,
+.post-page .post .post-content figure.highlight pre .prompt {
+  color: var(--gh-hl-string) !important;
+}
+
+.post-page .post .post-content figure.highlight pre .number,
+.post-page .post .post-content figure.highlight pre .literal,
+.post-page .post .post-content figure.highlight pre .constant,
+.post-page .post .post-content figure.highlight pre .symbol,
+.post-page .post .post-content figure.highlight pre .symbol .string {
+  color: var(--gh-hl-number) !important;
+}
+
+.post-page .post .post-content figure.highlight pre .comment,
+.post-page .post .post-content figure.highlight pre .java .annotation,
+.post-page .post .post-content figure.highlight pre .python .decorator,
+.post-page .post .post-content figure.highlight pre .template_comment,
+.post-page .post .post-content figure.highlight pre .pi,
+.post-page .post .post-content figure.highlight pre .doctype,
+.post-page .post .post-content figure.highlight pre .shebang,
+.post-page .post .post-content figure.highlight pre .apache .sqbracket,
+.post-page .post .post-content figure.highlight pre .tex .formula {
+  color: var(--gh-hl-comment) !important;
+}
+
+.post-page .post .post-content figure.highlight pre .title,
+.post-page .post .post-content figure.highlight pre .attribute,
+.post-page .post .post-content figure.highlight pre .change,
+.post-page .post .post-content figure.highlight pre .winutils,
+.post-page .post .post-content figure.highlight pre .flow,
+.post-page .post .post-content figure.highlight pre .lisp .title,
+.post-page .post .post-content figure.highlight pre .nginx .title,
+.post-page .post .post-content figure.highlight pre .tex .special {
+  color: var(--gh-hl-title) !important;
+}
+
+.post-page .post .post-content figure.highlight pre .tag,
+.post-page .post .post-content figure.highlight pre .tag .title {
+  color: var(--gh-hl-tag) !important;
+}
+
+.post-page .post .post-content figure.highlight pre .addition {
+  color: var(--gh-hl-addition) !important;
+}
+
+.post-page .post .post-content figure.highlight pre .deletion {
+  color: var(--gh-hl-deletion) !important;
+}
+
+.post-page .post .post-content figure.highlight pre .variable {
+  color: var(--gh-hl-variable) !important;
+}
+
+/* Post title at Typora h1 size */
+.post-page .post .post-title h3 {
+  font-size: 2.25rem;
+  line-height: 1.2;
+}
