@@ -44,7 +44,8 @@ description: 文章摘要，用于 SEO
 - **Tags**：目前有 `C#基础`、`Hexo`、`Markdown` 
 - **永久链接**格式：`posts/:abbrlink/`（crc32 算法生成数字 ID）
 - **资源文件夹**：`post_asset_folder: true`，每篇文章的图片等资源放在同名文件夹内
-- **引用文章图片**：`{% asset_img filename.svg 描述 %}`（Markdown 语法在 Hexo 中不适用）
+- **引用文章图片**：`![描述](文件名.png)`（Markdown 语法可用，`marked.postAsset: true` 会自动改写为 `/blog/posts/:abbrlink/文件名`；`{% asset_img %}` 亦可）
+- **⚠️ 必坑**：Front Matter **必须显式写 `abbrlink`**（如 `abbrlink: 4223884717`）。若缺省，hexo-abbrlink 会在 `before_post_render` 阶段才回填，而渲染器此时从模型克隆出的 Post 副本没有 abbrlink，图片 src 会变成 `/blog/posts/undefined/xxx.png`（部署后图片全挂，但文章 URL 和资源文件路径却正常，极难排查）。修复方法：用 `hexo generate` 输出的 `Generate link [xxx]` 或插件回填值补进 Front Matter 后重新构建
 
 ## 关键插件
 
