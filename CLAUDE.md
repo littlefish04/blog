@@ -43,8 +43,6 @@ description: 文章摘要，用于 SEO
 - **Categories**：目前有 `Unity 基础学习`、`建设博客`
 - **Tags**：目前有 `C#基础`、`Hexo`、`Markdown` 
 - **永久链接**格式：`posts/:abbrlink/`（crc32 算法生成数字 ID）
-- **资源文件夹**：`post_asset_folder: true`，每篇文章的图片等资源放在同名文件夹内
-- **引用文章图片**：`![描述](文件名.png)`（Markdown 语法可用，`marked.postAsset: true` 会自动改写为 `/blog/posts/:abbrlink/文件名`；`{% asset_img %}` 亦可）
 - **⚠️ 必坑**：Front Matter **必须显式写 `abbrlink`**（如 `abbrlink: 4223884717`）。若缺省，hexo-abbrlink 会在 `before_post_render` 阶段才回填，而渲染器此时从模型克隆出的 Post 副本没有 abbrlink，图片 src 会变成 `/blog/posts/undefined/xxx.png`（部署后图片全挂，但文章 URL 和资源文件路径却正常，极难排查）。修复方法：用 `hexo generate` 输出的 `Generate link [xxx]` 或插件回填值补进 Front Matter 后重新构建
 
 ## 关键插件
@@ -58,15 +56,6 @@ description: 文章摘要，用于 SEO
 | hexo-filter-nofollow | 外链添加 nofollow |
 | hexo-renderer-marked | Markdown 渲染（支持 postAsset） |
 | hexo-filter-mathjax | 数学公式渲染（注入 MathJax CDN） |
-
-## 数学公式支持
-
-- **插件**：`hexo-filter-mathjax`，配置 `tags: ams`、`single_dollars: true`
-- **行内公式**：`$...$`，如 `$\hat{i}$`、`$\vec{v}$`、`$\cdot$`、`$\frac{a}{b}$`
-- **块级公式**：`$$...$$`
-- **AMS 环境**：`\begin{bmatrix} ... \end{bmatrix}`、`\begin{equation} ... \end{equation}` 等均支持
-- **矩阵换行**：必须用 `\cr` 而非 `\\`（marked 会把 `\\` 转义为 `\` 导致换行失效），Typora 和网站均兼容
-- **注意**：公式内 `_` 可能被 Markdown 误解析为斜体，慎在公式外嵌套 `*` 或 `_`
 
 ## SEO 配置
 
@@ -82,52 +71,7 @@ description: 文章摘要，用于 SEO
   - **排障**：若 key 文件线上 200、内容正确、无重定向却持续 403 `UserForbiddedToAccessSite`，多为 IndexNow/Bing 缓存了该 key 的失败验证状态（常见触发：部署窗口期 key 文件短暂 404 时 IndexNow 恰好重新验证）。**解决：换新 key**（`openssl rand -hex 32` 生成新 64 位 hex，更新 GitHub Secret `INDEXNOW_KEY`，新文件名 = 全新 URL = 无历史状态，立即生效）。Bing Webmaster Tools 的 XML 站点验证与 IndexNow key 验证是两套独立系统，不影响此问题
   - Google 不支持 IndexNow，Google 侧需在 Search Console 单独提交 sitemap
 
-## 写作风格
+## 文章图片配置
 
-参照 `C-常用组件底层代码分析.md`，遵循以下规范：
-
-### 文章结构
-1. **Front Matter**：完整填写 title、tags、categories、summary、description
-2. **写在前面**：用 `## 写在前面` 开头，交代文章背景、参考来源、适用读者
-3. **正文**：用 `## 一、` `## 二、` 编号分节，每节下用 `###` 小标题细分，h3 标题按 `### 1.1 xxxxx`、`### 1.2 xxxxx` 的格式编号（编号对应当前所在大节）
-4. **参考资料**：文末用 `## 参考资料` 列出参考链接
-
-### 代码与行文
-- 所有代码块标注语言标识（` ```c# `、` ```yaml `、` ```bash ` 等）
-- 代码块后有解释性文字，逐段分析关键逻辑
-- 行文中 `Backtick` 包裹的方法名/类名/参数名
-- 使用 `>` 引用块引用外部资料或强调要点
-- 用 `**粗体**` 强调重要结论
-- 中英混排：技术术语保留英文（如 GC、Hash、Enumerable），普通叙述用中文
-- 语气：客观技术分析，可带"我们来看看""可以看到"等引导语，避免口语化感叹词
-- 如有 AI 辅助生成内容，在"写在前面"末尾添加声明：`部分内容为ai生成，如有错误恳请指出。`
-
-### 内容深度
-- 不仅讲"怎么用"，更要讲"为什么这样设计""底层怎么实现"
-- 引用源码逐行分析，标注复杂度（O(n)、O(1) 等）
-- 对潜在问题给出改进建议（如预分配容量、避免 foreach 等）
-- 结尾给出实用性总结
-
-### 特殊样式
-
-在写文章的时候，你可以加入tip框
-
-```html
-<div class="tip">
-Tip框内的文字
-</div>
-```
-
-渲染出来会有这样的样式：
-
-<div class="tip">
-Tip框内的文字
-</div>
-
-## 关于润色文章的要求
-
-当用户希望润色文章时，你应该做到：
-
-- 不改动 Front Matter 、写在前面、参考资料这三个部分。
-- 在保留原意的基础上对文字进行润色，包括修改行文风格（参照写作风格一章）、修改表达让阅读逻辑更顺畅、纠正文章中的错误等等。
-- 如果遇到文章中写有 “待补充” 的字样，按上下文要求进行补充。
+- **资源文件夹**：`post_asset_folder: true`，每篇文章的图片等资源放在同名文件夹内
+- **引用文章图片**：`![描述](文件名.png)`（Markdown 语法可用，`marked.postAsset: true` 会自动改写为 `/blog/posts/:abbrlink/文件名`；`{% asset_img %}` 亦可）
