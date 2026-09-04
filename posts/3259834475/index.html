@@ -1,0 +1,786 @@
+<!DOCTYPE html><html lang="zh-CN" theme="default"><head><meta charset="utf-8"><meta name="google-site-verification" content="w13Lw4hzsSX75i2n0s2ZqP2KvO9NPUVdsnK-LB4VuXA"><meta name="X-UA-Compatible" content="IE=edge"><meta name="author" content="littlefish04"><title>程序的机器级表示（二） · littlefish04个人博客</title><meta name="description" content="写在前面这篇文章对应的是原书的以下章节：
+
+第 3 章 程序的机器级表示
+3.6 控制
+
+
+
+部分内容为ai生成，如有错误恳请指出。
+
+一、条件码到目前为止，我们只考虑了直线代码的行为，也就是指令一条接着一条顺序执行的情况。但 C 语言中的条件语句、循环语句和分支语句都要求有条件地执行——根据对数据"><meta name="keywords" content="Blog,博客,Hexo,littlefish04 blog,littlefish04个人博客"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta id="site_data_static" data-url="/blog/"><meta name="renderer" content="webkit"><link rel="shortcut icon" type="image/x-icon" href="/blog/images/favicon.webp"><link rel="stylesheet" href="/blog/js_complied/bundle.css"><link rel="stylesheet" href="/blog/css/github-content.css"><link rel="stylesheet" href="/blog/css/font-awesome.min.css"><link rel="alternate" type="application/atom+xml" title="ATOM 1.0" href="/atom.xml"><meta property="og:title" content="程序的机器级表示（二） · littlefish04个人博客"><meta property="og:type" content="article"><meta property="og:url" content="https://littlefish04.github.io/blog/posts/3259834475/"><meta property="og:description" content="本文对应《深入理解计算机系统》第 3 章 3.6 节（控制），讲解 x86-64 机器级代码中的控制流实现：条件码（CF/ZF/SF/OF） 及其置位规则、CMP/TEST 与 SET 指令、跳转指令（JMP 与条件跳转）及其 PC 相对的二进制编码、条件传送指令 CMOV 的用法与限制、do-while/while/for 循环的汇编翻译（跳转到中间与 guarded-do），以及用跳转表实现 switch 语句。"><meta property="og:image" content="https://littlefish04.github.io/blog/images/1.png"><meta property="og:site_name" content="littlefish04个人博客"><meta property="og:locale" content="zh_CN"><meta property="article:published_time" content="2026-09-04T12:15:56.000Z"><meta property="article:modified_time" content="2026-09-04T12:26:06.459Z"><meta property="article:tag" content="计算机系统基础"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="程序的机器级表示（二） · littlefish04个人博客"><meta name="twitter:description" content="本文对应《深入理解计算机系统》第 3 章 3.6 节（控制），讲解 x86-64 机器级代码中的控制流实现：条件码（CF/ZF/SF/OF） 及其置位规则、CMP/TEST 与 SET 指令、跳转指令（JMP 与条件跳转）及其 PC 相对的二进制编码、条件传送指令 CMOV 的用法与限制、do-while/while/for 循环的汇编翻译（跳转到中间与 guarded-do），以及用跳转表实现 switch 语句。"><link rel="canonical" href="https://littlefish04.github.io/blog/posts/3259834475/"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"><script src="/blog/js_complied/bundle.js"></script><script>Anatolo.comment.setConfig({"valine":{"enable":false,"appid":null,"appkey":null,"notify":false,"verify":false,"avatar":"mm","placeholder":"hello, world"},"gitment":{"enable":false,"owner":"littlefish04","repo":"Gitment-repo","client_id":"Ov23liQvODT8ulenZPgL","client_secret":"a89a59e18c2b4bc891a5e47b3d876870f5c6dd7a"},"gitalk":{"enable":true,"owner":"littlefish04","repo":"Gitment-repo","client_id":"Ov23liQvODT8ulenZPgL","client_secret":"a89a59e18c2b4bc891a5e47b3d876870f5c6dd7a"},"duoshuo":null,"disqus":null,"gentie":null})</script><link rel="stylesheet" href="/blog/css/comments/gittalk.css"><script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script><meta name="generator" content="Hexo 8.1.2"><style>mjx-container[jax="SVG"] {
+  direction: ltr;
+}
+
+mjx-container[jax="SVG"] > svg {
+  overflow: visible;
+}
+
+mjx-container[jax="SVG"][display="true"] {
+  display: block;
+  text-align: center;
+  margin: 1em 0;
+}
+
+mjx-container[jax="SVG"][justify="left"] {
+  text-align: left;
+}
+
+mjx-container[jax="SVG"][justify="right"] {
+  text-align: right;
+}
+
+g[data-mml-node="merror"] > g {
+  fill: red;
+  stroke: red;
+}
+
+g[data-mml-node="merror"] > rect[data-background] {
+  fill: yellow;
+  stroke: none;
+}
+
+g[data-mml-node="mtable"] > line[data-line] {
+  stroke-width: 70px;
+  fill: none;
+}
+
+g[data-mml-node="mtable"] > rect[data-frame] {
+  stroke-width: 70px;
+  fill: none;
+}
+
+g[data-mml-node="mtable"] > .mjx-dashed {
+  stroke-dasharray: 140;
+}
+
+g[data-mml-node="mtable"] > .mjx-dotted {
+  stroke-linecap: round;
+  stroke-dasharray: 0,140;
+}
+
+g[data-mml-node="mtable"] > svg {
+  overflow: visible;
+}
+
+[jax="SVG"] mjx-tool {
+  display: inline-block;
+  position: relative;
+  width: 0;
+  height: 0;
+}
+
+[jax="SVG"] mjx-tool > mjx-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+mjx-tool > mjx-tip {
+  display: inline-block;
+  padding: .2em;
+  border: 1px solid #888;
+  font-size: 70%;
+  background-color: #F8F8F8;
+  color: black;
+  box-shadow: 2px 2px 5px #AAAAAA;
+}
+
+g[data-mml-node="maction"][data-toggle] {
+  cursor: pointer;
+}
+
+mjx-status {
+  display: block;
+  position: fixed;
+  left: 1em;
+  bottom: 1em;
+  min-width: 25%;
+  padding: .2em .4em;
+  border: 1px solid #888;
+  font-size: 90%;
+  background-color: #F8F8F8;
+  color: black;
+}
+
+foreignObject[data-mjx-xml] {
+  font-family: initial;
+  line-height: normal;
+  overflow: visible;
+}
+
+.MathJax path {
+  stroke-width: 3;
+}
+
+mjx-container[display="true"] {
+  overflow: auto hidden;
+}
+
+mjx-container[display="true"] + br {
+  display: none;
+}
+</style></head><body> <main-outlet><div class="page-top animated"><div class="nav"><li><a href="/blog/">首页</a></li><li><a href="/blog/archives">归档</a></li><li><a href="/blog/categories">分类</a></li><li><a href="/blog/tags">标签</a></li></div><div class="information"><div class="nav_right_btn"><li class="btn-toggle-more"><i class="fa fa-ellipsis"></i></li><li class="btn-go-back"><a class="fa fa-chevron-left" onclick="window.history.go(-1)"> </a></li><li class="btn-search"><a class="fa fa-search" onclick="Anatolo.search.openWindow();"></a></li><li class="btn-toggle-theme"><a class="far fa-sun" onclick="Anatolo.darkLightToggle();"></a></li></div><div class="avatar"><img src="/blog/images/logo.webp"></div></div></div><div class="toc-mobile"><div class="toc-button"><span>目录</span></div><div class="toc-container in-page animated fadeInDown"><div class="toclist-container"><div class="tocmenu"><ol class="toclist"><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E5%86%99%E5%9C%A8%E5%89%8D%E9%9D%A2"><span class="toclist-text">写在前面</span></a></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E4%B8%80%E3%80%81%E6%9D%A1%E4%BB%B6%E7%A0%81"><span class="toclist-text">一、条件码</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#1-1-%E6%9D%A1%E4%BB%B6%E7%A0%81%E5%AF%84%E5%AD%98%E5%99%A8"><span class="toclist-text">1.1 条件码寄存器</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E6%95%B4%E6%95%B0%E5%92%8C%E9%80%BB%E8%BE%91%E6%8C%87%E4%BB%A4%E5%A6%82%E4%BD%95%E8%AE%BE%E7%BD%AE%E6%9D%A1%E4%BB%B6%E7%A0%81"><span class="toclist-text">整数和逻辑指令如何设置条件码</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#CMP-%E5%92%8C-TEST-%E6%8C%87%E4%BB%A4"><span class="toclist-text">CMP 和 TEST 指令</span></a></li></ol></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#1-2-%E8%AE%BF%E9%97%AE%E6%9D%A1%E4%BB%B6%E7%A0%81"><span class="toclist-text">1.2 访问条件码</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#SET-%E6%8C%87%E4%BB%A4"><span class="toclist-text">SET 指令</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E6%AF%94%E8%BE%83%E7%9A%84%E5%85%B8%E5%9E%8B%E6%8C%87%E4%BB%A4%E5%BA%8F%E5%88%97"><span class="toclist-text">比较的典型指令序列</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E6%9C%BA%E5%99%A8%E4%BB%A3%E7%A0%81%E4%B8%AD%E7%9A%84%E6%9C%89%E7%AC%A6%E5%8F%B7%E5%92%8C%E6%97%A0%E7%AC%A6%E5%8F%B7%E5%80%BC"><span class="toclist-text">机器代码中的有符号和无符号值</span></a></li></ol></li></ol></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E4%BA%8C%E3%80%81%E8%B7%B3%E8%BD%AC%E6%8C%87%E4%BB%A4"><span class="toclist-text">二、跳转指令</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#2-1-JMP-%E6%8C%87%E4%BB%A4%E5%92%8C%E6%9C%89%E6%9D%A1%E4%BB%B6%E8%B7%B3%E8%BD%AC"><span class="toclist-text">2.1 JMP 指令和有条件跳转</span></a></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#2-2-%E8%B7%B3%E8%BD%AC%E6%8C%87%E4%BB%A4%E7%9A%84%E7%BC%96%E7%A0%81"><span class="toclist-text">2.2 跳转指令的编码</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#PC-%E7%9B%B8%E5%AF%B9%E5%AF%BB%E5%9D%80%E7%9A%84%E4%BE%8B%E5%AD%90"><span class="toclist-text">PC 相对寻址的例子</span></a></li></ol></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#2-3-%E7%94%A8%E8%B7%B3%E8%BD%AC%E5%AE%9E%E7%8E%B0%E6%9D%A1%E4%BB%B6%E5%88%86%E6%94%AF"><span class="toclist-text">2.3 用跳转实现条件分支</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E7%A4%BA%E4%BE%8B%E4%BB%A3%E7%A0%81"><span class="toclist-text">示例代码</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E9%80%9A%E7%94%A8%E6%A8%A1%E6%9D%BF"><span class="toclist-text">通用模板</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E7%BB%83%E4%B9%A0%E9%A2%98"><span class="toclist-text">练习题</span></a></li></ol></li></ol></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E4%B8%89%E3%80%81%E6%9D%A1%E4%BB%B6%E4%BC%A0%E9%80%81%E6%8C%87%E4%BB%A4"><span class="toclist-text">三、条件传送指令</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#3-1-%E7%A4%BA%E4%BE%8B%E4%BB%A3%E7%A0%81"><span class="toclist-text">3.1 示例代码</span></a></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#3-2-%E4%B8%BA%E4%BB%80%E4%B9%88%E6%9D%A1%E4%BB%B6%E6%95%B0%E6%8D%AE%E4%BC%A0%E9%80%81%E6%80%A7%E8%83%BD%E6%9B%B4%E5%A5%BD"><span class="toclist-text">3.2 为什么条件数据传送性能更好</span></a></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#3-3-CMOV-%E6%8C%87%E4%BB%A4"><span class="toclist-text">3.3 CMOV 指令</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E6%9D%A1%E4%BB%B6%E6%8E%A7%E5%88%B6%E8%BD%AC%E7%A7%BB%E5%92%8C%E6%9D%A1%E4%BB%B6%E4%BC%A0%E9%80%81%E7%9A%84%E5%AF%B9%E6%AF%94"><span class="toclist-text">条件控制转移和条件传送的对比</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E6%9D%A1%E4%BB%B6%E4%BC%A0%E9%80%81%E6%8C%87%E4%BB%A4%E7%9A%84%E9%99%90%E5%88%B6"><span class="toclist-text">条件传送指令的限制</span></a></li></ol></li></ol></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E5%9B%9B%E3%80%81%E5%BE%AA%E7%8E%AF%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toclist-text">四、循环的实现</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#4-1-do-while-%E5%BE%AA%E7%8E%AF"><span class="toclist-text">4.1 do-while 循环</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E7%A4%BA%E4%BE%8B"><span class="toclist-text">示例</span></a></li></ol></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#4-2-while-%E5%BE%AA%E7%8E%AF"><span class="toclist-text">4.2 while 循环</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E8%B7%B3%E8%BD%AC%E5%88%B0%E4%B8%AD%E9%97%B4"><span class="toclist-text">跳转到中间</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#guarded-do"><span class="toclist-text">guarded-do</span></a></li></ol></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#4-3-for-%E5%BE%AA%E7%8E%AF"><span class="toclist-text">4.3 for 循环</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E7%A4%BA%E4%BE%8B-1"><span class="toclist-text">示例</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E7%BB%83%E4%B9%A0%E9%A2%98-3-29"><span class="toclist-text">练习题 3.29</span></a></li></ol></li></ol></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E4%BA%94%E3%80%81switch-%E8%AF%AD%E5%8F%A5%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toclist-text">五、switch 语句的实现</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#5-1-%E7%A4%BA%E4%BE%8B%E4%BB%A3%E7%A0%81"><span class="toclist-text">5.1 示例代码</span></a></li></ol></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toclist-text">参考资料</span></a></li></ol></div></div></div></div><div class="sidebar animated"><div class="sidebar-top"><div class="logo-title"><div class="title"><img src="/blog/images/logo@2x.webp" style="width:220px;" alt="favicon"><h3 title=""><a href="/">littlefish04个人博客</a></h3><div class="description"><p>记录一些学习过程</p></div></div><ul class="social-links"><li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/littlefish04"><i class="fab fa-github"></i></a></li><li><a href="mailto:littlefish04@163.com" rel="external nofollow noreferrer"><i class="fa fa-envelope"></i></a></li></ul></div><div class="toc-container in-sidebar animated fadeInDown"><details class="ltr" open><summary>目录</summary><div class="toclist-container"><div class="tocmenu"><ol class="toclist"><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E5%86%99%E5%9C%A8%E5%89%8D%E9%9D%A2"><span class="toclist-text">写在前面</span></a></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E4%B8%80%E3%80%81%E6%9D%A1%E4%BB%B6%E7%A0%81"><span class="toclist-text">一、条件码</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#1-1-%E6%9D%A1%E4%BB%B6%E7%A0%81%E5%AF%84%E5%AD%98%E5%99%A8"><span class="toclist-text">1.1 条件码寄存器</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E6%95%B4%E6%95%B0%E5%92%8C%E9%80%BB%E8%BE%91%E6%8C%87%E4%BB%A4%E5%A6%82%E4%BD%95%E8%AE%BE%E7%BD%AE%E6%9D%A1%E4%BB%B6%E7%A0%81"><span class="toclist-text">整数和逻辑指令如何设置条件码</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#CMP-%E5%92%8C-TEST-%E6%8C%87%E4%BB%A4"><span class="toclist-text">CMP 和 TEST 指令</span></a></li></ol></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#1-2-%E8%AE%BF%E9%97%AE%E6%9D%A1%E4%BB%B6%E7%A0%81"><span class="toclist-text">1.2 访问条件码</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#SET-%E6%8C%87%E4%BB%A4"><span class="toclist-text">SET 指令</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E6%AF%94%E8%BE%83%E7%9A%84%E5%85%B8%E5%9E%8B%E6%8C%87%E4%BB%A4%E5%BA%8F%E5%88%97"><span class="toclist-text">比较的典型指令序列</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E6%9C%BA%E5%99%A8%E4%BB%A3%E7%A0%81%E4%B8%AD%E7%9A%84%E6%9C%89%E7%AC%A6%E5%8F%B7%E5%92%8C%E6%97%A0%E7%AC%A6%E5%8F%B7%E5%80%BC"><span class="toclist-text">机器代码中的有符号和无符号值</span></a></li></ol></li></ol></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E4%BA%8C%E3%80%81%E8%B7%B3%E8%BD%AC%E6%8C%87%E4%BB%A4"><span class="toclist-text">二、跳转指令</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#2-1-JMP-%E6%8C%87%E4%BB%A4%E5%92%8C%E6%9C%89%E6%9D%A1%E4%BB%B6%E8%B7%B3%E8%BD%AC"><span class="toclist-text">2.1 JMP 指令和有条件跳转</span></a></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#2-2-%E8%B7%B3%E8%BD%AC%E6%8C%87%E4%BB%A4%E7%9A%84%E7%BC%96%E7%A0%81"><span class="toclist-text">2.2 跳转指令的编码</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#PC-%E7%9B%B8%E5%AF%B9%E5%AF%BB%E5%9D%80%E7%9A%84%E4%BE%8B%E5%AD%90"><span class="toclist-text">PC 相对寻址的例子</span></a></li></ol></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#2-3-%E7%94%A8%E8%B7%B3%E8%BD%AC%E5%AE%9E%E7%8E%B0%E6%9D%A1%E4%BB%B6%E5%88%86%E6%94%AF"><span class="toclist-text">2.3 用跳转实现条件分支</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E7%A4%BA%E4%BE%8B%E4%BB%A3%E7%A0%81"><span class="toclist-text">示例代码</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E9%80%9A%E7%94%A8%E6%A8%A1%E6%9D%BF"><span class="toclist-text">通用模板</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E7%BB%83%E4%B9%A0%E9%A2%98"><span class="toclist-text">练习题</span></a></li></ol></li></ol></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E4%B8%89%E3%80%81%E6%9D%A1%E4%BB%B6%E4%BC%A0%E9%80%81%E6%8C%87%E4%BB%A4"><span class="toclist-text">三、条件传送指令</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#3-1-%E7%A4%BA%E4%BE%8B%E4%BB%A3%E7%A0%81"><span class="toclist-text">3.1 示例代码</span></a></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#3-2-%E4%B8%BA%E4%BB%80%E4%B9%88%E6%9D%A1%E4%BB%B6%E6%95%B0%E6%8D%AE%E4%BC%A0%E9%80%81%E6%80%A7%E8%83%BD%E6%9B%B4%E5%A5%BD"><span class="toclist-text">3.2 为什么条件数据传送性能更好</span></a></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#3-3-CMOV-%E6%8C%87%E4%BB%A4"><span class="toclist-text">3.3 CMOV 指令</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E6%9D%A1%E4%BB%B6%E6%8E%A7%E5%88%B6%E8%BD%AC%E7%A7%BB%E5%92%8C%E6%9D%A1%E4%BB%B6%E4%BC%A0%E9%80%81%E7%9A%84%E5%AF%B9%E6%AF%94"><span class="toclist-text">条件控制转移和条件传送的对比</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E6%9D%A1%E4%BB%B6%E4%BC%A0%E9%80%81%E6%8C%87%E4%BB%A4%E7%9A%84%E9%99%90%E5%88%B6"><span class="toclist-text">条件传送指令的限制</span></a></li></ol></li></ol></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E5%9B%9B%E3%80%81%E5%BE%AA%E7%8E%AF%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toclist-text">四、循环的实现</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#4-1-do-while-%E5%BE%AA%E7%8E%AF"><span class="toclist-text">4.1 do-while 循环</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E7%A4%BA%E4%BE%8B"><span class="toclist-text">示例</span></a></li></ol></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#4-2-while-%E5%BE%AA%E7%8E%AF"><span class="toclist-text">4.2 while 循环</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E8%B7%B3%E8%BD%AC%E5%88%B0%E4%B8%AD%E9%97%B4"><span class="toclist-text">跳转到中间</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#guarded-do"><span class="toclist-text">guarded-do</span></a></li></ol></li><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#4-3-for-%E5%BE%AA%E7%8E%AF"><span class="toclist-text">4.3 for 循环</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E7%A4%BA%E4%BE%8B-1"><span class="toclist-text">示例</span></a></li><li class="toclist-item toclist-level-4"><a class="toclist-link" href="#%E7%BB%83%E4%B9%A0%E9%A2%98-3-29"><span class="toclist-text">练习题 3.29</span></a></li></ol></li></ol></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E4%BA%94%E3%80%81switch-%E8%AF%AD%E5%8F%A5%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toclist-text">五、switch 语句的实现</span></a><ol class="toclist-child"><li class="toclist-item toclist-level-3"><a class="toclist-link" href="#5-1-%E7%A4%BA%E4%BE%8B%E4%BB%A3%E7%A0%81"><span class="toclist-text">5.1 示例代码</span></a></li></ol></li><li class="toclist-item toclist-level-2"><a class="toclist-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toclist-text">参考资料</span></a></li></ol></div></div></details></div></div><div class="footer"><div class="p"><span>学习是条漫漫长路。 </span><i class="fa fa-star"></i><span> littlefish04</span></div><div class="by_farbox"><span>Powered by</span><a href="https://hexo.io/zh-cn/" rel="external nofollow noreferrer" target="_blank"> Hexo</a><span> &</span><a href="https://github.com/Lhcfl/hexo-theme-anatolo" rel="external nofollow noreferrer" target="_blank"> Anatolo</a></div><div class="beian"></div></div></div><div class="main animated fadeInDown"><div class="autopagerize_page_element"><div class="content"><div class="post-page"><div class="post animated"><div class="post-title"><h3><a>程序的机器级表示（二）</a></h3></div><div class="post-content"><p><hr>
+<h2 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h2><p>这篇文章对应的是原书的以下章节：</p>
+<ul>
+<li>第 3 章 程序的机器级表示<ul>
+<li>3.6 控制</li>
+</ul>
+</li>
+</ul>
+<p>部分内容为ai生成，如有错误恳请指出。</p>
+<hr>
+<h2 id="一、条件码"><a href="#一、条件码" class="headerlink" title="一、条件码"></a>一、条件码</h2><p>到目前为止，我们只考虑了<strong>直线</strong>代码的行为，也就是指令一条接着一条顺序执行的情况。但 C 语言中的条件语句、循环语句和分支语句都要求<strong>有条件地执行</strong>——根据对数据测试的结果来决定操作的执行顺序。改变一组机器代码指令执行顺序的，正是跳转（jump）指令。</p>
+<p>不过在介绍跳转指令之前，我们先来了解一个实现条件语句必不可少的东西：<strong>条件码</strong>。</p>
+<h3 id="1-1-条件码寄存器"><a href="#1-1-条件码寄存器" class="headerlink" title="1.1 条件码寄存器"></a>1.1 条件码寄存器</h3><p>除了整数寄存器，CPU 还维护着一组单个位的条件码（condition code）寄存器，它们描述了最近一次算术或逻辑操作的属性。我们可以检测这些寄存器，进而执行条件分支指令。最常用的条件码有四个，如下表所示：</p>
+<table>
+<thead>
+<tr>
+<th align="center">标志</th>
+<th>名称</th>
+<th>置 1 的条件</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><code>CF</code></td>
+<td>进位标志</td>
+<td>最近的操作，如果是加法运算是否向最高有效位外产生进位，或在减法运算中是否发生借位。可用来检查无符号操作的溢出</td>
+</tr>
+<tr>
+<td align="center"><code>ZF</code></td>
+<td>零标志</td>
+<td>最近的操作得出的结果为 0</td>
+</tr>
+<tr>
+<td align="center"><code>SF</code></td>
+<td>符号标志</td>
+<td>最近的操作得到的结果为负数</td>
+</tr>
+<tr>
+<td align="center"><code>OF</code></td>
+<td>溢出标志</td>
+<td>最近的操作导致一次补码溢出——正溢出或负溢出</td>
+</tr>
+</tbody></table>
+<h4 id="整数和逻辑指令如何设置条件码"><a href="#整数和逻辑指令如何设置条件码" class="headerlink" title="整数和逻辑指令如何设置条件码"></a>整数和逻辑指令如何设置条件码</h4><p>举个例子：假设我们用一条 <code>ADD</code> 指令完成等价于 C 表达式 <code>t = a + b</code> 的功能，其中 <code>a</code>、<code>b</code> 和 <code>t</code> 都是整型。用 <code>t</code> 表示 ADD 指令得到的结果，则条件码按下面的规则设置（对应的 C 表达式为真时置 1，为假时置 0）：</p>
+<table>
+<thead>
+<tr>
+<th align="center">条件码</th>
+<th>置 1 的条件（C 表达式）</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><code>CF</code></td>
+<td><code>(unsigned) t &lt; (unsigned) a</code></td>
+<td>无符号溢出</td>
+</tr>
+<tr>
+<td align="center"><code>ZF</code></td>
+<td><code>t == 0</code></td>
+<td>结果为零</td>
+</tr>
+<tr>
+<td align="center"><code>SF</code></td>
+<td><code>t &lt; 0</code></td>
+<td>结果为负数</td>
+</tr>
+<tr>
+<td align="center"><code>OF</code></td>
+<td><code>(a &lt; 0 == b &lt; 0) &amp;&amp; (t &lt; 0 != a &lt; 0)</code></td>
+<td>有符号溢出</td>
+</tr>
+</tbody></table>
+<p>初次接触这张表，最容易困惑的是 <code>CF</code>：<code>a</code>、<code>b</code>、<code>t</code> 明明都是整型（机器里以补码存放），怎么会冒出一个「无符号溢出」？关键在于，<strong>CPU 的加法器并不区分有符号与无符号</strong>——它只是把 <code>a</code> 和 <code>b</code> 的位模式逐位相加，再把最高位产生的进位输出记录到 <code>CF</code> 中。不管是有符号数还是无符号数，计算机内部都是<strong>使用补码进行运算</strong>的，只是对结果位模式的解读不同。从无符号的视角看，如果两个 <mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.025ex;" xmlns="http://www.w3.org/2000/svg" width="1.62ex" height="1.025ex" role="img" focusable="false" viewBox="0 -442 716 453"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="w"><g data-mml-node="mi" data-latex="w"><path data-c="1D464" d="M590 391C590 382 595 372 606 362C629 340 641 313 641 281C641 264 635 237 623 198C586 78 539 18 482 18C435 18 412 45 412 100C412 119 416 142 423 171C441 243 460 314 477 387C479 394 480 398 480 401C480 421 469 431 447 431C427 431 414 421 407 401L367 245C352 187 341 167 341 115C341 107 341 101 342 98C319 45 290 18 255 18C205 18 180 47 180 104C180 141 197 204 231 293C242 323 248 344 248 357C248 406 212 442 163 442C118 442 84 417 59 367C39 328 29 301 29 287C29 278 34 273 45 273C58 273 60 279 64 293C88 373 120 413 160 413C174 413 181 403 181 384C181 369 175 347 164 317C127 220 108 154 108 117C108 32 165-11 252-11C294-11 328 10 355 53C375 10 416-11 479-11C541-11 590 30 625 112C648 164 691 302 691 369C691 384 690 394 689 399C685 418 666 442 644 442C618 442 590 417 590 391Z"></path></g></g></g></svg></mjx-container> 位无符号数相加需要 <mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="1.62ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 716 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="w+1"><g data-mml-node="mi" data-latex="w"><path data-c="1D464" d="M590 391C590 382 595 372 606 362C629 340 641 313 641 281C641 264 635 237 623 198C586 78 539 18 482 18C435 18 412 45 412 100C412 119 416 142 423 171C441 243 460 314 477 387C479 394 480 398 480 401C480 421 469 431 447 431C427 431 414 421 407 401L367 245C352 187 341 167 341 115C341 107 341 101 342 98C319 45 290 18 255 18C205 18 180 47 180 104C180 141 197 204 231 293C242 323 248 344 248 357C248 406 212 442 163 442C118 442 84 417 59 367C39 328 29 301 29 287C29 278 34 273 45 273C58 273 60 279 64 293C88 373 120 413 160 413C174 413 181 403 181 384C181 369 175 347 164 317C127 220 108 154 108 117C108 32 165-11 252-11C294-11 328 10 355 53C375 10 416-11 479-11C541-11 590 30 625 112C648 164 691 302 691 369C691 384 690 394 689 399C685 418 666 442 644 442C618 442 590 417 590 391Z"></path></g></g></g></svg><mjx-break size="3"> </mjx-break><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="3.394ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 1500.2 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="w+1"><g data-mml-node="mo" data-latex="+"><path data-c="2B" d="M698 274L413 274L413 559C413 575 405 583 389 583C373 583 365 575 365 559L365 274L80 274C64 274 56 266 56 250C56 234 64 226 80 226L365 226L365-59C365-75 373-83 389-83C405-83 413-75 413-59L413 226L698 226C714 226 722 234 722 250C722 263 711 274 698 274Z"></path></g><g data-mml-node="mn" data-latex="1" transform="translate(1000.2,0)"><path data-c="31" d="M269 666C228 624 168 603 89 603L89 564C141 564 184 572 217 588L217 82C217 64 213 52 204 47C195 42 170 39 130 39L95 39L95 0C120 2 174 3 257 3C340 3 394 2 419 0L419 39L384 39C343 39 318 42 310 47C302 52 297 64 297 82L297 636C297 660 295 666 269 666Z"></path></g></g></g></svg></mjx-container> 位才能表示，就说明最高位发生了进位（溢出）；此时低 <mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.025ex;" xmlns="http://www.w3.org/2000/svg" width="1.62ex" height="1.025ex" role="img" focusable="false" viewBox="0 -442 716 453"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="w"><g data-mml-node="mi" data-latex="w"><path data-c="1D464" d="M590 391C590 382 595 372 606 362C629 340 641 313 641 281C641 264 635 237 623 198C586 78 539 18 482 18C435 18 412 45 412 100C412 119 416 142 423 171C441 243 460 314 477 387C479 394 480 398 480 401C480 421 469 431 447 431C427 431 414 421 407 401L367 245C352 187 341 167 341 115C341 107 341 101 342 98C319 45 290 18 255 18C205 18 180 47 180 104C180 141 197 204 231 293C242 323 248 344 248 357C248 406 212 442 163 442C118 442 84 417 59 367C39 328 29 301 29 287C29 278 34 273 45 273C58 273 60 279 64 293C88 373 120 413 160 413C174 413 181 403 181 384C181 369 175 347 164 317C127 220 108 154 108 117C108 32 165-11 252-11C294-11 328 10 355 53C375 10 416-11 479-11C541-11 590 30 625 112C648 164 691 302 691 369C691 384 690 394 689 399C685 418 666 442 644 442C618 442 590 417 590 391Z"></path></g></g></g></svg></mjx-container> 位的结果（也就是 <code>t</code> 的位模式）必然小于其中任意一个操作数，于是 <code>(unsigned) t &lt; (unsigned) a</code> 恰好刻画了这一情形。即使 <code>a</code>、<code>b</code>、<code>t</code> 在 C 语言里声明为有符号的整型，位模式相加时最高位同样可能产生进位，<code>CF</code> 照样会被置 1——只是在这种语义下 <code>CF</code> 不再有意义，有符号加法真正要关心的是 <code>OF</code>。</p>
+<p>看两个具体的例子（以 64 位加法为例）会更清楚：</p>
+<ul>
+<li><code>t = -1 + 1</code>：位模式 <code>0xFF…FF</code> 与 <code>0x00…01</code> 相加，得到 <code>0x00…00</code>，同时最高位产生了进位，因此 <code>CF = 1</code>、<code>ZF = 1</code>；而 <code>-1 + 1</code> 并没有发生有符号溢出，所以 <code>OF = 0</code>。</li>
+<li><code>t = 0x7FFF…FF + 1</code>：符号位从 0 翻转为 1，结果按有符号解读变成了负数，这正是典型的有符号溢出，因此 <code>OF = 1</code>；但最高位没有产生进位，所以 <code>CF = 0</code>。</li>
+</ul>
+<p><code>ZF</code> 和 <code>SF</code> 则直观得多：结果的位模式全为 0 时 <code>ZF = 1</code>；结果的符号位为 1（按有符号解读为负）时 <code>SF = 1</code>。</p>
+<p><code>leaq</code> 指令不改变任何条件码，因为它是专门用来进行地址计算的。除此之外，图 3-10 中列出的所有指令（也就是上一篇《程序的机器级表示（一）》第五节介绍的 x86-64 整数与逻辑操作）都会设置条件码，但各类指令置位的方式略有差异：</p>
+<ul>
+<li>对于 <code>AND</code>、<code>OR</code>、<code>XOR</code> 这类<strong>逻辑操作</strong>，进位标志和溢出标志会被设置为 0。原因是逻辑运算按位独立地产生每一位结果，位与位之间不存在「进位」或「借位」的传递，更谈不上补码溢出，硬件自然把 <code>CF</code> 和 <code>OF</code> 清零；<code>SF</code>、<code>ZF</code> 仍照常反映结果的符号位是否为零和位模式是否全为零。</li>
+<li>对于<strong>移位操作</strong>，进位标志被设置为最后一个被移出的位，而溢出标志设置为 0。被移出字边界的那个位，正是这次移位「丢出」字范围的信息，把它暂存在 <code>CF</code> 中可以在需要时派上用场；移位不存在「同号相加导致符号翻转」那种加性溢出，因此 <code>OF</code> 被清零。</li>
+<li><code>INC</code> 和 <code>DEC</code> 指令会设置溢出标志和零标志，但<strong>不会改变进位标志</strong>。这两条指令最常见的用途是更新循环计数器或指针，而 <code>CF</code> 常被多精度（扩展精度）算术当作进位链的一部分——若计数器自增顺手把 <code>CF</code> 改掉，正在进行的进位传递就会被破坏，所以设计上特意保留了它。</li>
+</ul>
+<h4 id="CMP-和-TEST-指令"><a href="#CMP-和-TEST-指令" class="headerlink" title="CMP 和 TEST 指令"></a>CMP 和 TEST 指令</h4><p>除了图 3-10 中的指令，还有两类指令<strong>只设置条件码，不改变任何其他寄存器</strong>，它们都有 8、16、32 和 64 位形式，如下表所示（对应原书图 3-13，其中 <code>S1</code>、<code>S2</code> 表示两个操作数）：</p>
+<table>
+<thead>
+<tr>
+<th>指令类</th>
+<th>8/16/32/64 位形式</th>
+<th>等价于</th>
+<th>行为</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>CMP</code></td>
+<td><code>cmpb</code> / <code>cmpw</code> / <code>cmpl</code> / <code>cmpq</code></td>
+<td><code>SUB</code></td>
+<td>比较：计算 <code>S2 - S1</code>（两个操作数之差），只设置条件码，不更新目的寄存器</td>
+</tr>
+<tr>
+<td><code>TEST</code></td>
+<td><code>testb</code> / <code>testw</code> / <code>testl</code> / <code>testq</code></td>
+<td><code>AND</code></td>
+<td>测试：计算 <code>S1 &amp; S2</code>（按位与），只设置条件码，不更新目的寄存器</td>
+</tr>
+</tbody></table>
+<p><code>CMP</code> 指令根据两个操作数之差来设置条件码。除了只设置条件码而不更新目的寄存器之外，<code>CMP</code> 与 <code>SUB</code> 的行为完全一致：<code>cmpq b, a</code> 和 <code>subq b, a</code> 一样，都计算 <mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="1.197ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 529 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a - b"><g data-mml-node="mi" data-latex="a"><path data-c="1D44E" d="M498 144C498 153 493 158 482 158C474 158 468 151 465 137C445 58 421 18 394 18C377 18 368 32 368 60C368 73 372 97 381 132L438 357C443 376 445 387 445 392C445 412 434 422 412 422C391 422 377 410 370 387C349 424 319 442 281 442C216 442 159 409 109 343C63 281 40 217 40 150C40 63 91-11 175-11C218-11 260 12 300 58C311 20 345-11 392-11C461-11 482 70 498 144M341 374C350 353 355 339 355 330C355 326 354 321 353 314L304 122C301 111 294 99 285 87C248 41 212 18 177 18C138 18 118 48 118 107C118 131 124 167 136 215C157 300 187 357 224 388C244 405 263 413 282 413C309 413 329 400 341 374Z"></path></g></g></g></svg><mjx-break size="3"> </mjx-break><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="3.234ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 1429.2 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a - b"><g data-mml-node="mo" data-latex="-"><path data-c="2212" d="M698 270L80 270C64 270 56 263 56 250C56 237 64 230 80 230L698 230C714 230 722 237 722 250C722 262 710 270 698 270Z"></path></g><g data-mml-node="mi" data-latex="b" transform="translate(1000.2,0)"><path data-c="1D44F" d="M281 445C245 445 209 428 174 394L243 679C241 688 238 694 226 694C193 694 120 685 107 684C92 682 84 675 84 660C84 650 93 645 112 645C131 645 157 646 157 632C157 628 152 608 143 571L63 249C52 207 47 173 47 148C47 62 93-11 175-11C240-11 297 22 347 89C392 151 415 216 415 283C415 370 364 445 281 445M279 415C318 415 337 385 337 326C337 299 331 263 319 218C297 133 268 75 233 44C213 27 194 19 175 19C134 19 114 51 114 115C114 137 119 170 129 214L151 304C154 319 159 330 165 338C204 389 242 415 279 415Z"></path></g></g></g></svg></mjx-container>。若两个操作数相等，零标志会被置 1；而其余标志则用来确定两个操作数之间的大小关系：</p>
+<ul>
+<li><strong>无符号比较</strong>：<mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="1.197ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 529 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a < b"><g data-mml-node="mi" data-latex="a"><path data-c="1D44E" d="M498 144C498 153 493 158 482 158C474 158 468 151 465 137C445 58 421 18 394 18C377 18 368 32 368 60C368 73 372 97 381 132L438 357C443 376 445 387 445 392C445 412 434 422 412 422C391 422 377 410 370 387C349 424 319 442 281 442C216 442 159 409 109 343C63 281 40 217 40 150C40 63 91-11 175-11C218-11 260 12 300 58C311 20 345-11 392-11C461-11 482 70 498 144M341 374C350 353 355 339 355 330C355 326 354 321 353 314L304 122C301 111 294 99 285 87C248 41 212 18 177 18C138 18 118 48 118 107C118 131 124 167 136 215C157 300 187 357 224 388C244 405 263 413 282 413C309 413 329 400 341 374Z"></path></g></g></g></svg><mjx-break size="4"> </mjx-break><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="3.359ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 1484.8 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a < b"><g data-mml-node="mo" data-latex="<"><path data-c="3C" d="M666-45C683-52 701-39 701-23C701-13 696-6 687-2L153 250L687 502C696 506 701 513 701 522C701 539 693 547 677 547C673 547 669 546 666 545L92 273C82 268 77 261 77 250C77 239 82 232 92 227Z"></path></g><g data-mml-node="mi" data-latex="b" transform="translate(1055.8,0)"><path data-c="1D44F" d="M281 445C245 445 209 428 174 394L243 679C241 688 238 694 226 694C193 694 120 685 107 684C92 682 84 675 84 660C84 650 93 645 112 645C131 645 157 646 157 632C157 628 152 608 143 571L63 249C52 207 47 173 47 148C47 62 93-11 175-11C240-11 297 22 347 89C392 151 415 216 415 283C415 370 364 445 281 445M279 415C318 415 337 385 337 326C337 299 331 263 319 218C297 133 268 75 233 44C213 27 194 19 175 19C134 19 114 51 114 115C114 137 119 170 129 214L151 304C154 319 159 330 165 338C204 389 242 415 279 415Z"></path></g></g></g></svg></mjx-container> 当且仅当 <code>CF = 1</code>（相减时最高位发生了借位，得到的结果会是一个比 <mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.025ex;" xmlns="http://www.w3.org/2000/svg" width="1.197ex" height="1.025ex" role="img" focusable="false" viewBox="0 -442 529 453"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a"><g data-mml-node="mi" data-latex="a"><path data-c="1D44E" d="M498 144C498 153 493 158 482 158C474 158 468 151 465 137C445 58 421 18 394 18C377 18 368 32 368 60C368 73 372 97 381 132L438 357C443 376 445 387 445 392C445 412 434 422 412 422C391 422 377 410 370 387C349 424 319 442 281 442C216 442 159 409 109 343C63 281 40 217 40 150C40 63 91-11 175-11C218-11 260 12 300 58C311 20 345-11 392-11C461-11 482 70 498 144M341 374C350 353 355 339 355 330C355 326 354 321 353 314L304 122C301 111 294 99 285 87C248 41 212 18 177 18C138 18 118 48 118 107C118 131 124 167 136 215C157 300 187 357 224 388C244 405 263 413 282 413C309 413 329 400 341 374Z"></path></g></g></g></svg></mjx-container> 大的无符号数）；<mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="1.197ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 529 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a = b"><g data-mml-node="mi" data-latex="a"><path data-c="1D44E" d="M498 144C498 153 493 158 482 158C474 158 468 151 465 137C445 58 421 18 394 18C377 18 368 32 368 60C368 73 372 97 381 132L438 357C443 376 445 387 445 392C445 412 434 422 412 422C391 422 377 410 370 387C349 424 319 442 281 442C216 442 159 409 109 343C63 281 40 217 40 150C40 63 91-11 175-11C218-11 260 12 300 58C311 20 345-11 392-11C461-11 482 70 498 144M341 374C350 353 355 339 355 330C355 326 354 321 353 314L304 122C301 111 294 99 285 87C248 41 212 18 177 18C138 18 118 48 118 107C118 131 124 167 136 215C157 300 187 357 224 388C244 405 263 413 282 413C309 413 329 400 341 374Z"></path></g></g></g></svg><mjx-break size="4"> </mjx-break><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="3.359ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 1484.8 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a = b"><g data-mml-node="mo" data-latex="="><path data-c="3D" d="M698 367L80 367C64 367 56 359 56 344C56 329 64 321 80 321L698 321C714 321 722 329 722 344C722 356 711 367 698 367M698 179L80 179C64 179 56 171 56 156C56 141 64 133 80 133L698 133C714 133 722 141 722 156C722 169 711 179 698 179Z"></path></g><g data-mml-node="mi" data-latex="b" transform="translate(1055.8,0)"><path data-c="1D44F" d="M281 445C245 445 209 428 174 394L243 679C241 688 238 694 226 694C193 694 120 685 107 684C92 682 84 675 84 660C84 650 93 645 112 645C131 645 157 646 157 632C157 628 152 608 143 571L63 249C52 207 47 173 47 148C47 62 93-11 175-11C240-11 297 22 347 89C392 151 415 216 415 283C415 370 364 445 281 445M279 415C318 415 337 385 337 326C337 299 331 263 319 218C297 133 268 75 233 44C213 27 194 19 175 19C134 19 114 51 114 115C114 137 119 170 129 214L151 304C154 319 159 330 165 338C204 389 242 415 279 415Z"></path></g></g></g></svg></mjx-container> 当且仅当 <code>ZF = 1</code>；<mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="1.197ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 529 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a > b"><g data-mml-node="mi" data-latex="a"><path data-c="1D44E" d="M498 144C498 153 493 158 482 158C474 158 468 151 465 137C445 58 421 18 394 18C377 18 368 32 368 60C368 73 372 97 381 132L438 357C443 376 445 387 445 392C445 412 434 422 412 422C391 422 377 410 370 387C349 424 319 442 281 442C216 442 159 409 109 343C63 281 40 217 40 150C40 63 91-11 175-11C218-11 260 12 300 58C311 20 345-11 392-11C461-11 482 70 498 144M341 374C350 353 355 339 355 330C355 326 354 321 353 314L304 122C301 111 294 99 285 87C248 41 212 18 177 18C138 18 118 48 118 107C118 131 124 167 136 215C157 300 187 357 224 388C244 405 263 413 282 413C309 413 329 400 341 374Z"></path></g></g></g></svg><mjx-break size="4"> </mjx-break><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="3.359ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 1484.8 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a > b"><g data-mml-node="mo" data-latex=">"><path data-c="3E" d="M686 227C696 232 701 239 701 250C701 261 696 268 686 273L112 545C109 546 105 547 101 547C85 547 77 539 77 522C77 513 82 506 91 502L625 250L91-2C82-6 77-13 77-22C77-39 85-47 101-47C105-47 109-46 112-45Z"></path></g><g data-mml-node="mi" data-latex="b" transform="translate(1055.8,0)"><path data-c="1D44F" d="M281 445C245 445 209 428 174 394L243 679C241 688 238 694 226 694C193 694 120 685 107 684C92 682 84 675 84 660C84 650 93 645 112 645C131 645 157 646 157 632C157 628 152 608 143 571L63 249C52 207 47 173 47 148C47 62 93-11 175-11C240-11 297 22 347 89C392 151 415 216 415 283C415 370 364 445 281 445M279 415C318 415 337 385 337 326C337 299 331 263 319 218C297 133 268 75 233 44C213 27 194 19 175 19C134 19 114 51 114 115C114 137 119 170 129 214L151 304C154 319 159 330 165 338C204 389 242 415 279 415Z"></path></g></g></g></svg></mjx-container> 当且仅当 <code>CF = 0</code> 且 <code>ZF = 0</code>。</li>
+<li><strong>有符号比较</strong>：<mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="1.197ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 529 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a < b"><g data-mml-node="mi" data-latex="a"><path data-c="1D44E" d="M498 144C498 153 493 158 482 158C474 158 468 151 465 137C445 58 421 18 394 18C377 18 368 32 368 60C368 73 372 97 381 132L438 357C443 376 445 387 445 392C445 412 434 422 412 422C391 422 377 410 370 387C349 424 319 442 281 442C216 442 159 409 109 343C63 281 40 217 40 150C40 63 91-11 175-11C218-11 260 12 300 58C311 20 345-11 392-11C461-11 482 70 498 144M341 374C350 353 355 339 355 330C355 326 354 321 353 314L304 122C301 111 294 99 285 87C248 41 212 18 177 18C138 18 118 48 118 107C118 131 124 167 136 215C157 300 187 357 224 388C244 405 263 413 282 413C309 413 329 400 341 374Z"></path></g></g></g></svg><mjx-break size="4"> </mjx-break><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="3.359ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 1484.8 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a < b"><g data-mml-node="mo" data-latex="<"><path data-c="3C" d="M666-45C683-52 701-39 701-23C701-13 696-6 687-2L153 250L687 502C696 506 701 513 701 522C701 539 693 547 677 547C673 547 669 546 666 545L92 273C82 268 77 261 77 250C77 239 82 232 92 227Z"></path></g><g data-mml-node="mi" data-latex="b" transform="translate(1055.8,0)"><path data-c="1D44F" d="M281 445C245 445 209 428 174 394L243 679C241 688 238 694 226 694C193 694 120 685 107 684C92 682 84 675 84 660C84 650 93 645 112 645C131 645 157 646 157 632C157 628 152 608 143 571L63 249C52 207 47 173 47 148C47 62 93-11 175-11C240-11 297 22 347 89C392 151 415 216 415 283C415 370 364 445 281 445M279 415C318 415 337 385 337 326C337 299 331 263 319 218C297 133 268 75 233 44C213 27 194 19 175 19C134 19 114 51 114 115C114 137 119 170 129 214L151 304C154 319 159 330 165 338C204 389 242 415 279 415Z"></path></g></g></g></svg></mjx-container> 当且仅当 <code>SF ≠ OF</code>；<mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="1.197ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 529 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a = b"><g data-mml-node="mi" data-latex="a"><path data-c="1D44E" d="M498 144C498 153 493 158 482 158C474 158 468 151 465 137C445 58 421 18 394 18C377 18 368 32 368 60C368 73 372 97 381 132L438 357C443 376 445 387 445 392C445 412 434 422 412 422C391 422 377 410 370 387C349 424 319 442 281 442C216 442 159 409 109 343C63 281 40 217 40 150C40 63 91-11 175-11C218-11 260 12 300 58C311 20 345-11 392-11C461-11 482 70 498 144M341 374C350 353 355 339 355 330C355 326 354 321 353 314L304 122C301 111 294 99 285 87C248 41 212 18 177 18C138 18 118 48 118 107C118 131 124 167 136 215C157 300 187 357 224 388C244 405 263 413 282 413C309 413 329 400 341 374Z"></path></g></g></g></svg><mjx-break size="4"> </mjx-break><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="3.359ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 1484.8 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a = b"><g data-mml-node="mo" data-latex="="><path data-c="3D" d="M698 367L80 367C64 367 56 359 56 344C56 329 64 321 80 321L698 321C714 321 722 329 722 344C722 356 711 367 698 367M698 179L80 179C64 179 56 171 56 156C56 141 64 133 80 133L698 133C714 133 722 141 722 156C722 169 711 179 698 179Z"></path></g><g data-mml-node="mi" data-latex="b" transform="translate(1055.8,0)"><path data-c="1D44F" d="M281 445C245 445 209 428 174 394L243 679C241 688 238 694 226 694C193 694 120 685 107 684C92 682 84 675 84 660C84 650 93 645 112 645C131 645 157 646 157 632C157 628 152 608 143 571L63 249C52 207 47 173 47 148C47 62 93-11 175-11C240-11 297 22 347 89C392 151 415 216 415 283C415 370 364 445 281 445M279 415C318 415 337 385 337 326C337 299 331 263 319 218C297 133 268 75 233 44C213 27 194 19 175 19C134 19 114 51 114 115C114 137 119 170 129 214L151 304C154 319 159 330 165 338C204 389 242 415 279 415Z"></path></g></g></g></svg></mjx-container> 当且仅当 <code>ZF = 1</code>；<mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="1.197ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 529 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a > b"><g data-mml-node="mi" data-latex="a"><path data-c="1D44E" d="M498 144C498 153 493 158 482 158C474 158 468 151 465 137C445 58 421 18 394 18C377 18 368 32 368 60C368 73 372 97 381 132L438 357C443 376 445 387 445 392C445 412 434 422 412 422C391 422 377 410 370 387C349 424 319 442 281 442C216 442 159 409 109 343C63 281 40 217 40 150C40 63 91-11 175-11C218-11 260 12 300 58C311 20 345-11 392-11C461-11 482 70 498 144M341 374C350 353 355 339 355 330C355 326 354 321 353 314L304 122C301 111 294 99 285 87C248 41 212 18 177 18C138 18 118 48 118 107C118 131 124 167 136 215C157 300 187 357 224 388C244 405 263 413 282 413C309 413 329 400 341 374Z"></path></g></g></g></svg><mjx-break size="4"> </mjx-break><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="3.359ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 1484.8 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a > b"><g data-mml-node="mo" data-latex=">"><path data-c="3E" d="M686 227C696 232 701 239 701 250C701 261 696 268 686 273L112 545C109 546 105 547 101 547C85 547 77 539 77 522C77 513 82 506 91 502L625 250L91-2C82-6 77-13 77-22C77-39 85-47 101-47C105-47 109-46 112-45Z"></path></g><g data-mml-node="mi" data-latex="b" transform="translate(1055.8,0)"><path data-c="1D44F" d="M281 445C245 445 209 428 174 394L243 679C241 688 238 694 226 694C193 694 120 685 107 684C92 682 84 675 84 660C84 650 93 645 112 645C131 645 157 646 157 632C157 628 152 608 143 571L63 249C52 207 47 173 47 148C47 62 93-11 175-11C240-11 297 22 347 89C392 151 415 216 415 283C415 370 364 445 281 445M279 415C318 415 337 385 337 326C337 299 331 263 319 218C297 133 268 75 233 44C213 27 194 19 175 19C134 19 114 51 114 115C114 137 119 170 129 214L151 304C154 319 159 330 165 338C204 389 242 415 279 415Z"></path></g></g></g></svg></mjx-container> 当且仅当 <code>SF = OF</code> 且 <code>ZF = 0</code>。</li>
+</ul>
+<blockquote>
+<p>有符号比较为什么要同时考察 <code>SF</code> 和 <code>OF</code>？因为当 <mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="1.197ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 529 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a - b"><g data-mml-node="mi" data-latex="a"><path data-c="1D44E" d="M498 144C498 153 493 158 482 158C474 158 468 151 465 137C445 58 421 18 394 18C377 18 368 32 368 60C368 73 372 97 381 132L438 357C443 376 445 387 445 392C445 412 434 422 412 422C391 422 377 410 370 387C349 424 319 442 281 442C216 442 159 409 109 343C63 281 40 217 40 150C40 63 91-11 175-11C218-11 260 12 300 58C311 20 345-11 392-11C461-11 482 70 498 144M341 374C350 353 355 339 355 330C355 326 354 321 353 314L304 122C301 111 294 99 285 87C248 41 212 18 177 18C138 18 118 48 118 107C118 131 124 167 136 215C157 300 187 357 224 388C244 405 263 413 282 413C309 413 329 400 341 374Z"></path></g></g></g></svg><mjx-break size="3"> </mjx-break><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="3.234ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 1429.2 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="a - b"><g data-mml-node="mo" data-latex="-"><path data-c="2212" d="M698 270L80 270C64 270 56 263 56 250C56 237 64 230 80 230L698 230C714 230 722 237 722 250C722 262 710 270 698 270Z"></path></g><g data-mml-node="mi" data-latex="b" transform="translate(1000.2,0)"><path data-c="1D44F" d="M281 445C245 445 209 428 174 394L243 679C241 688 238 694 226 694C193 694 120 685 107 684C92 682 84 675 84 660C84 650 93 645 112 645C131 645 157 646 157 632C157 628 152 608 143 571L63 249C52 207 47 173 47 148C47 62 93-11 175-11C240-11 297 22 347 89C392 151 415 216 415 283C415 370 364 445 281 445M279 415C318 415 337 385 337 326C337 299 331 263 319 218C297 133 268 75 233 44C213 27 194 19 175 19C134 19 114 51 114 115C114 137 119 170 129 214L151 304C154 319 159 330 165 338C204 389 242 415 279 415Z"></path></g></g></g></svg></mjx-container> 发生有符号溢出时，结果的符号位会被「翻转」，只看 <code>SF</code> 会得到与事实相反的结论；<code>SF</code> 与 <code>OF</code> 不一致（异或为 1）恰好排除了溢出的干扰。这一规则在 1.2 节 SET 指令的表格中会体现得更直观。</p>
+</blockquote>
+<p><code>TEST</code> 指令的行为与 <code>AND</code> 指令一样，区别只在于它不改变目的寄存器的值，仅设置条件码（<code>CF</code> 与 <code>OF</code> 恒为 0）。它的典型用法有两种：</p>
+<ul>
+<li><strong>两个操作数相同</strong>：<code>testq %rax, %rax</code> 相当于让 <code>%rax</code> 与自己相与，结果就是 <code>%rax</code> 本身。于是 <code>ZF = 1</code> 表示 <code>%rax</code> 为 0，<code>SF = 1</code> 表示 <code>%rax</code> 为负数，<code>SF = 0</code> 且 <code>ZF = 0</code> 表示 <code>%rax</code> 为正数——这正是用 <code>testq %rax, %rax</code> 检查 <code>%rax</code> 是负数、零还是正数的原理。</li>
+<li><strong>一个操作数是掩码（mask）</strong>：掩码中为 1 的那些位，会把另一个操作数对应位置上的位「过滤」出来，从而只测试感兴趣的位。例如 <code>testq $1, %rax</code> 只保留最低位：<code>ZF = 1</code> 说明最低位为 0（<code>%rax</code> 为偶数），否则最低位为 1（<code>%rax</code> 为奇数）；<code>testb $0x80, %al</code> 则可用来检查 <code>%al</code> 的最高位（符号位）。</li>
+</ul>
+<h3 id="1-2-访问条件码"><a href="#1-2-访问条件码" class="headerlink" title="1.2 访问条件码"></a>1.2 访问条件码</h3><p>条件码通常不会被直接读取，使用它们的方式主要有三种：</p>
+<ol>
+<li>根据条件码的某种组合，将一个字节设置为 0 或 1；</li>
+<li>条件跳转到程序的某个其他部分；</li>
+<li>有条件地传送数据。</li>
+</ol>
+<p>本节先介绍第一种情况（SET 指令），第二、三种分别对应之后会讲到的的跳转指令，以及条件传送指令。</p>
+<h4 id="SET-指令"><a href="#SET-指令" class="headerlink" title="SET 指令"></a>SET 指令</h4><p>对于第一种情况，下表中的指令会根据条件码的某种组合，把一个字节设置为 0 或 1（<code>0x00</code> 或 <code>0x01</code>）。我们把这整类指令统称为 SET 指令；它们之间的区别只在于所考察的条件码组合不同，指令名中不同的后缀正指明了这种组合（注意这里的后缀不表示操作数的大小）。</p>
+<table>
+<thead>
+<tr>
+<th>指令</th>
+<th>同义名</th>
+<th>置 1 的条件</th>
+<th>表示的情况</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>sete D</code></td>
+<td><code>setz</code></td>
+<td><code>ZF</code></td>
+<td>相等 / 为零</td>
+</tr>
+<tr>
+<td><code>setne D</code></td>
+<td><code>setnz</code></td>
+<td><code>~ZF</code></td>
+<td>不相等 / 不为零</td>
+</tr>
+<tr>
+<td><code>sets D</code></td>
+<td></td>
+<td><code>SF</code></td>
+<td>为负数</td>
+</tr>
+<tr>
+<td><code>setns D</code></td>
+<td></td>
+<td><code>~SF</code></td>
+<td>为非负数</td>
+</tr>
+<tr>
+<td><code>setg D</code></td>
+<td><code>setnle</code></td>
+<td><code>~(SF^OF) &amp; ~ZF</code></td>
+<td>大于（有符号 &gt;）</td>
+</tr>
+<tr>
+<td><code>setge D</code></td>
+<td><code>setnl</code></td>
+<td><code>~(SF^OF)</code></td>
+<td>大于等于（有符号 &gt;=）</td>
+</tr>
+<tr>
+<td><code>setl D</code></td>
+<td><code>setnge</code></td>
+<td><code>SF^OF</code></td>
+<td>小于（有符号 &lt;）</td>
+</tr>
+<tr>
+<td><code>setle D</code></td>
+<td><code>setng</code></td>
+<td>`(SF^OF)</td>
+<td>ZF`</td>
+</tr>
+<tr>
+<td><code>seta D</code></td>
+<td><code>setnbe</code></td>
+<td><code>~CF &amp; ~ZF</code></td>
+<td>大于（无符号 &gt;）</td>
+</tr>
+<tr>
+<td><code>setae D</code></td>
+<td><code>setnb</code></td>
+<td><code>~CF</code></td>
+<td>大于等于（无符号 &gt;=）</td>
+</tr>
+<tr>
+<td><code>setb D</code></td>
+<td><code>setnae</code></td>
+<td><code>CF</code></td>
+<td>小于（无符号 &lt;）</td>
+</tr>
+<tr>
+<td><code>setbe D</code></td>
+<td><code>setna</code></td>
+<td>`CF</td>
+<td>ZF`</td>
+</tr>
+</tbody></table>
+<p>表中 <code>D</code> 表示目的操作数；<code>~</code> 为逻辑取反（如 <code>~ZF</code> 表示「ZF 为 0」），<code>^</code> 为异或。对照 1.1 节 CMP 的结论可以看到：无符号比较（<code>seta</code>、<code>setb</code> 一族）只依赖 <code>CF</code> 和 <code>ZF</code>，有符号比较（<code>setg</code>、<code>setl</code> 一族）则依赖 <code>SF</code>、<code>OF</code> 和 <code>ZF</code>，两者并不通用。</p>
+<p>一条 SET 指令的目的操作数必须是低位单字节寄存器（如 <code>%al</code>），或是一个字节的内存位置，指令会将这个字节设置为 0 或 1。</p>
+<h4 id="比较的典型指令序列"><a href="#比较的典型指令序列" class="headerlink" title="比较的典型指令序列"></a>比较的典型指令序列</h4><p>一个计算 C 语言表达式 <code>a &lt; b</code> 的典型指令序列如下所示，这里 <code>a</code> 和 <code>b</code> 都是 <code>long</code> 类型：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># a in %rdi, b in %rsi</span><br><span class="line">cmpq    %rsi, %rdi   # 比较 a 与 b，即计算 a - b</span><br><span class="line">setl    %al          # 若 a &lt; b（有符号），把 %al 置为 1，否则置为 0</span><br><span class="line">movzbl  %al, %eax    # 把 %al 零扩展写入 %eax</span><br></pre></td></tr></table></figure>
+
+<p><code>setl</code> 判断的是有符号的「小于」（条件为 <code>SF^OF = 1</code>），因此上面这段代码计算的是有符号比较 <code>a &lt; b</code>；若要比较无符号大小，把 <code>setl</code> 换成 <code>setb</code> 即可。另外要记得，正如前面讨论过的那样，<code>movzbl</code> 指令不仅会把 <code>%eax</code> 的高 3 个字节清零，还会把整个寄存器 <code>%rax</code> 的高 4 个字节都清零——任何以 32 位寄存器为目的的操作，都会隐式地把 64 位寄存器的高 32 位清零。</p>
+<p>从上面的表格还可以看到，有些底层的机器指令可能有多个名字，我们称之为「同义名」（synonym）。比如说，<code>setg</code>（表示「设置大于」）和 <code>setnle</code>（表示「设置不小于等于」）指的就是同一条机器指令。编译器和反汇编器会随意决定使用哪个名字，两种写法效果完全相同。</p>
+<h4 id="机器代码中的有符号和无符号值"><a href="#机器代码中的有符号和无符号值" class="headerlink" title="机器代码中的有符号和无符号值"></a>机器代码中的有符号和无符号值</h4><p>注意到机器代码如何区分有符号和无符号值是很重要的。同 C 语言不同，机器代码不会把每个程序值都与某个数据类型联系起来；大多数情况下，它对有符号和无符号两种情况使用一样的指令，这是因为许多算术运算对无符号和补码算术具有相同的位级行为。但在少数情况下，机器代码必须用不同的指令（或不同的条件码组合）来处理有符号和无符号操作。</p>
+<p>把《程序的机器级表示（一）》和本文讲过的指令汇总起来，可以整理成下面这份清单：</p>
+<p><strong>位级行为一致、可共用同一指令的情况：</strong></p>
+<ul>
+<li><strong>加减法</strong>（<code>ADD</code>/<code>SUB</code>）与一元操作（<code>INC</code>/<code>DEC</code>/<code>NEG</code>）：补码加法与无符号加法在模 <mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: 0;" xmlns="http://www.w3.org/2000/svg" width="2.464ex" height="1.528ex" role="img" focusable="false" viewBox="0 -675.5 1089.3 675.5"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="2^w"><g data-mml-node="msup" data-latex="2^w"><g data-mml-node="mn" data-latex="2"><path data-c="32" d="M237 666C186 666 143 648 106 612C69 576 50 534 50 483C50 449 75 424 106 424C136 424 161 450 161 480C161 513 137 536 105 536C102 536 100 536 98 535C117 584 161 627 224 627C306 627 352 556 352 470C352 403 318 331 250 255L62 43C49 28 50 29 50 0L421 0L450 180L417 180C409 129 402 100 396 91C391 86 361 84 306 84L139 84L236 179C304 243 390 312 419 365C439 400 449 435 449 470C449 588 357 666 237 666Z"></path></g><g data-mml-node="mi" transform="translate(533,363) scale(0.707)" data-latex="w"><path data-c="1D464" d="M590 391C590 382 595 372 606 362C629 340 641 313 641 281C641 264 635 237 623 198C586 78 539 18 482 18C435 18 412 45 412 100C412 119 416 142 423 171C441 243 460 314 477 387C479 394 480 398 480 401C480 421 469 431 447 431C427 431 414 421 407 401L367 245C352 187 341 167 341 115C341 107 341 101 342 98C319 45 290 18 255 18C205 18 180 47 180 104C180 141 197 204 231 293C242 323 248 344 248 357C248 406 212 442 163 442C118 442 84 417 59 367C39 328 29 301 29 287C29 278 34 273 45 273C58 273 60 279 64 293C88 373 120 413 160 413C174 413 181 403 181 384C181 369 175 347 164 317C127 220 108 154 108 117C108 32 165-11 252-11C294-11 328 10 355 53C375 10 416-11 479-11C541-11 590 30 625 112C648 164 691 302 691 369C691 384 690 394 689 399C685 418 666 442 644 442C618 442 590 417 590 391Z"></path></g></g></g></g></svg></mjx-container> 下本就是同一种位级运算；</li>
+<li><strong>逻辑操作</strong>（<code>AND</code>/<code>OR</code>/<code>XOR</code>/<code>NOT</code>）：按位运算与符号无关；</li>
+<li><strong>左移</strong>（<code>SAL</code>/<code>SHL</code>）：一律低位补 0，位级行为一致；</li>
+<li><strong>双操作数乘法</strong> <code>imulq</code>：乘积截断到 <mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.025ex;" xmlns="http://www.w3.org/2000/svg" width="1.62ex" height="1.025ex" role="img" focusable="false" viewBox="0 -442 716 453"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="w"><g data-mml-node="mi" data-latex="w"><path data-c="1D464" d="M590 391C590 382 595 372 606 362C629 340 641 313 641 281C641 264 635 237 623 198C586 78 539 18 482 18C435 18 412 45 412 100C412 119 416 142 423 171C441 243 460 314 477 387C479 394 480 398 480 401C480 421 469 431 447 431C427 431 414 421 407 401L367 245C352 187 341 167 341 115C341 107 341 101 342 98C319 45 290 18 255 18C205 18 180 47 180 104C180 141 197 204 231 293C242 323 248 344 248 357C248 406 212 442 163 442C118 442 84 417 59 367C39 328 29 301 29 287C29 278 34 273 45 273C58 273 60 279 64 293C88 373 120 413 160 413C174 413 181 403 181 384C181 369 175 347 164 317C127 220 108 154 108 117C108 32 165-11 252-11C294-11 328 10 355 53C375 10 416-11 479-11C541-11 590 30 625 112C648 164 691 302 691 369C691 384 690 394 689 399C685 418 666 442 644 442C618 442 590 417 590 391Z"></path></g></g></g></svg></mjx-container> 位后，无符号乘法与补码乘法的位级结果相同；</li>
+<li><strong>数据传送</strong> <code>mov*</code> 与地址计算 <code>leaq</code>：只是搬运位模式，不做算术解释；</li>
+<li><strong><code>CMP</code>/<code>TEST</code> 指令本身</strong>：也只有一条，差别体现在之后如何解读 <code>CF</code>/<code>ZF</code>/<code>SF</code>/<code>OF</code>（选择不同的 SET 或跳转条件）。</li>
+</ul>
+<p><strong>必须区分、使用不同指令或不同条件的情况：</strong></p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>有符号</th>
+<th>无符号</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>右移</td>
+<td><code>SAR</code>（算术右移，高位补符号位）</td>
+<td><code>SHR</code>（逻辑右移，高位补 0）</td>
+</tr>
+<tr>
+<td>全 128 位乘法</td>
+<td><code>imulq</code></td>
+<td><code>mulq</code></td>
+</tr>
+<tr>
+<td>除法及被除数准备</td>
+<td><code>idivq</code> + <code>cqto</code>（把 <code>%rax</code> 符号扩展到 <code>%rdx</code>）</td>
+<td><code>divq</code>（<code>%rdx</code> 清零）</td>
+</tr>
+<tr>
+<td>大小比较后的置位</td>
+<td><code>setg</code>/<code>setge</code>/<code>setl</code>/<code>setle</code>（考察 <code>SF</code>/<code>OF</code>/<code>ZF</code>）</td>
+<td><code>seta</code>/<code>setae</code>/<code>setb</code>/<code>setbe</code>（考察 <code>CF</code>/<code>ZF</code>）</td>
+</tr>
+<tr>
+<td>零扩展与符号扩展</td>
+<td><code>MOVS</code> 族（如 <code>movslq</code>、<code>cltq</code>）</td>
+<td><code>MOVZ</code> 族（如 <code>movzbl</code>）</td>
+</tr>
+</tbody></table>
+<p>之所以多数运算能「一套指令通吃」，根源在于补码的设计：补码数的加减法与逻辑运算在位的层面与无符号数完全一致，只有那些需要解释最高位（符号位）语义的操作——右移时高位补什么、乘除结果如何解读、大小关系如何判定——才必须区分有符号与无符号。</p>
+<hr>
+<h2 id="二、跳转指令"><a href="#二、跳转指令" class="headerlink" title="二、跳转指令"></a>二、跳转指令</h2><p>正常情况下，指令按照它们在代码中出现的顺序一条一条地执行。<strong>跳转（jump）指令</strong>则会让执行切换到程序中一个全新的位置，从而实现「有条件地执行」。在汇编代码中，跳转的目的地通常用一个**标号（label）**来指明。考虑下面的汇编代码序列（完全是人为编造的）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">movq $0, %rax       # 将 %rax 置为 0</span><br><span class="line">jmp  .L1            # 跳转到标号 .L1</span><br><span class="line">movq (%rax), %rdx   # 空指针解引用（被跳过）</span><br><span class="line">.L1:</span><br><span class="line">popq %rdx           # 跳转目标</span><br></pre></td></tr></table></figure>
+
+<p><code>jmp .L1</code> 会让程序跳过中间的 <code>movq</code> 指令，直接从 <code>popq</code> 指令开始继续执行。在生成目标代码文件时，汇编器会确定所有带标号指令的地址，并将跳转目标（目的指令的地址）编码为跳转指令的一部分。</p>
+<blockquote>
+<p>这里的「确定地址」发生在汇编阶段：汇编器为每条指令分配地址（从 0 开始计数），凡是出现标号的地方，都能在这一步算出它所标记的那条指令的地址。同一文件内部的跳转目标因此可以在汇编时直接编码；而跨模块的符号（例如调用其他文件中定义的函数）则要等到链接阶段、布局确定后才能解析。</p>
+</blockquote>
+<h3 id="2-1-JMP-指令和有条件跳转"><a href="#2-1-JMP-指令和有条件跳转" class="headerlink" title="2.1 JMP 指令和有条件跳转"></a>2.1 JMP 指令和有条件跳转</h3><p>下表（对应原书图 3-15）列举了不同的跳转指令：</p>
+<table>
+<thead>
+<tr>
+<th>指令</th>
+<th>同义名</th>
+<th>跳转条件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>jmp Label</code></td>
+<td></td>
+<td>1</td>
+<td>直接跳转</td>
+</tr>
+<tr>
+<td><code>jmp *Operand</code></td>
+<td></td>
+<td>1</td>
+<td>间接跳转</td>
+</tr>
+<tr>
+<td><code>je Label</code></td>
+<td><code>jz</code></td>
+<td><code>ZF</code></td>
+<td>相等 / 为零</td>
+</tr>
+<tr>
+<td><code>jne Label</code></td>
+<td><code>jnz</code></td>
+<td><code>~ZF</code></td>
+<td>不相等 / 不为零</td>
+</tr>
+<tr>
+<td><code>js Label</code></td>
+<td></td>
+<td><code>SF</code></td>
+<td>为负数</td>
+</tr>
+<tr>
+<td><code>jns Label</code></td>
+<td></td>
+<td><code>~SF</code></td>
+<td>为非负数</td>
+</tr>
+<tr>
+<td><code>jg Label</code></td>
+<td><code>jnle</code></td>
+<td><code>~(SF^OF) &amp; ~ZF</code></td>
+<td>大于（有符号 &gt;）</td>
+</tr>
+<tr>
+<td><code>jge Label</code></td>
+<td><code>jnl</code></td>
+<td><code>~(SF^OF)</code></td>
+<td>大于等于（有符号 &gt;=）</td>
+</tr>
+<tr>
+<td><code>jl Label</code></td>
+<td><code>jnge</code></td>
+<td><code>SF^OF</code></td>
+<td>小于（有符号 &lt;）</td>
+</tr>
+<tr>
+<td><code>jle Label</code></td>
+<td><code>jng</code></td>
+<td><code>(SF^OF) | ZF</code></td>
+<td>小于等于（有符号 &lt;=）</td>
+</tr>
+<tr>
+<td><code>ja Label</code></td>
+<td><code>jnbe</code></td>
+<td><code>~CF &amp; ~ZF</code></td>
+<td>大于（无符号 &gt;）</td>
+</tr>
+<tr>
+<td><code>jae Label</code></td>
+<td><code>jnb</code></td>
+<td><code>~CF</code></td>
+<td>大于等于（无符号 &gt;=）</td>
+</tr>
+<tr>
+<td><code>jb Label</code></td>
+<td><code>jnae</code></td>
+<td><code>CF</code></td>
+<td>小于（无符号 &lt;）</td>
+</tr>
+<tr>
+<td><code>jbe Label</code></td>
+<td><code>jna</code></td>
+<td><code>CF | ZF</code></td>
+<td>小于等于（无符号 &lt;=）</td>
+</tr>
+</tbody></table>
+<p><code>jmp</code> 指令是无条件跳转，它可以是<strong>直接</strong>跳转，即跳转目标是作为指令的一部分编码的；也可以是<strong>间接</strong>跳转，即跳转目标是从寄存器或内存位置中读出的。在汇编语言中，直接跳转直接给出一个标号作为跳转目标，例如上文代码中的标号 <code>.L1</code>；间接跳转的写法是在操作数前加一个 <code>*</code>，操作数可以是寄存器或任意一种内存操作数格式，例如 <code>(%rax)</code>、<code>8(%rax,%rcx,4)</code> 等。</p>
+<p>举个例子，指令</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">jmp *%rax</span><br></pre></td></tr></table></figure>
+
+<p>用寄存器 <code>%rax</code> 中的值作为跳转目标；而指令</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">jmp *(%rax)</span><br></pre></td></tr></table></figure>
+
+<p>则是以 <code>%rax</code> 中的值作为读地址，从内存中读出跳转目标。这两种间接跳转的语义都很直接：跳转目标本质上就是一条指令的地址，<code>jmp *%rax</code> 相当于「跳到 <code>%rax</code> 内保存的地址」，<code>jmp *(%rax)</code> 则是「先到 <code>%rax</code> 指向的内存单元取地址，再跳到该地址」。</p>
+<p>上表其余跳转指令都是<strong>有条件的</strong>——它们根据条件码的某种组合，决定是跳转，还是继续执行代码序列中的下一条指令。这些指令的名字和跳转条件与 SET 指令完全对应（可回看 1.2 节的表格），例如 <code>setl</code> 考察 <code>SF^OF</code>，<code>jl</code> 也考察 <code>SF^OF</code>。与 SET 指令类似，一些底层机器指令存在多个名字（同义名），编译器和反汇编器会随意选用其一，两种写法效果完全相同。另外需要注意的是：<strong>条件跳转只能是直接跳转</strong>。</p>
+<h3 id="2-2-跳转指令的编码"><a href="#2-2-跳转指令的编码" class="headerlink" title="2.2 跳转指令的编码"></a>2.2 跳转指令的编码</h3><p>虽然我们通常不必关心二进制机器代码格式的细节，但理解跳转指令的目标是如何编码的，对第 7 章研究链接非常重要，也能帮助我们看懂反汇编器的输出。</p>
+<p>在汇编代码中，跳转目标用符号标号书写。汇编器（以及随后的链接器）会为跳转目标产生适当的二进制编码。跳转指令主要有两种编码方式：</p>
+<ul>
+<li><strong>PC 相对的（PC-relative）</strong>：最常用。编码内容是「目标指令的地址与程序计数器的值之差」。后文会看到，这里的程序计数器值取的是跳转指令<strong>后面那条指令</strong>的地址，而不是跳转指令本身的地址。这类地址偏移量可以编码为 1、2 或 4 个字节。</li>
+<li><strong>绝对地址</strong>：用 4 个字节直接指定目标。</li>
+</ul>
+<p>具体采用哪种编码，由汇编器和链接器根据情况选择。</p>
+<h4 id="PC-相对寻址的例子"><a href="#PC-相对寻址的例子" class="headerlink" title="PC 相对寻址的例子"></a>PC 相对寻址的例子</h4><p>下面是一个 PC 相对寻址的例子。考虑下面这段汇编代码（由某个 C 函数编译而来，函数符号名为 <code>loop</code>），它包含两个跳转：第 2 行的 <code>jmp</code> 指令前向跳转到更高的地址，而第 7 行的 <code>jg</code> 指令后向跳转到较低的地址：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">movq    %rdi, %rax</span><br><span class="line">jmp     .L2</span><br><span class="line">.L3:</span><br><span class="line">sarq    %rax</span><br><span class="line">.L2:</span><br><span class="line">testq   %rax, %rax</span><br><span class="line">jg      .L3</span><br><span class="line">rep; ret</span><br></pre></td></tr></table></figure>
+
+<p>汇编器产生的 <code>.o</code> 格式的反汇编版本如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">0:  48 89 f8    mov    %rdi,%rax</span><br><span class="line">3:  eb 03       jmp    8 &lt;loop+0x8&gt;</span><br><span class="line">5:  48 d1 f8    sar    %rax</span><br><span class="line">8:  48 85 c0    test   %rax,%rax</span><br><span class="line">b:  7f f8       jg     5 &lt;loop+0x5&gt;</span><br><span class="line">d:  f3 c3       repz   retq</span><br></pre></td></tr></table></figure>
+
+<p>反汇编器在右侧注释中给出跳转目标：第 2 行跳转指令的目标是 <code>0x8</code>，第 5 行跳转指令的目标是 <code>0x5</code>（反汇编器一律以十六进制格式给出数字）。观察指令的二进制字节编码，会看到第一条跳转指令的目标编码（位于第二个字节）为 <code>0x03</code>：把它加上 <code>0x5</code>——也就是下一条指令（<code>sarq</code>）的地址——就得到跳转目标地址 <code>0x8</code>，即 <code>testq</code> 那条指令的地址。</p>
+<p>类似地，第二条跳转指令的目标用单字节补码编码为 <code>0xf8</code>（十进制 -8）。把这个数加上 <code>0xd</code>（十进制 13，即 <code>repz retq</code> 的地址），得到 <code>0x5</code>，也就是 <code>sarq</code> 指令的地址。</p>
+<p>这些例子说明：当执行 PC 相对寻址时，程序计数器的值是<strong>跳转指令后面那条指令</strong>的地址，而不是跳转指令本身的地址。这种惯例可以追溯到早期的实现——当时的处理器把「更新程序计数器」作为执行一条指令的第一步。</p>
+<p>下面是链接后的程序反汇编版本：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">4004d0:  48 89 f8    mov    %rdi,%rax</span><br><span class="line">4004d3:  eb 03       jmp    4004d8 &lt;loop+0x8&gt;</span><br><span class="line">4004d5:  48 d1 f8    sar    %rax</span><br><span class="line">4004d8:  48 85 c0    test   %rax,%rax</span><br><span class="line">4004db:  7f f8       jg     4004d5 &lt;loop+0x5&gt;</span><br><span class="line">4004dd:  f3 c3       repz   retq</span><br></pre></td></tr></table></figure>
+
+<p>链接后这些指令被重定位到不同的地址，但第 2 行和第 5 行中跳转目标的编码（<code>eb 03</code>、<code>7f f8</code>）并没有改变。使用 PC 相对的跳转目标编码有两大好处：指令编码很简洁（两条跳转都只需要 2 个字节）；目标代码可以不做任何修改就搬到内存中不同的位置。</p>
+<blockquote>
+<p><strong>旁注：指令 <code>rep</code> 和 <code>repz</code> 有什么用</strong></p>
+<p>本节开头的汇编代码第 8 行包含指令组合 <code>rep; ret</code>，它在反汇编代码（第 6 行）中对应 <code>repz retq</code>。可以推测 <code>repz</code> 是 <code>rep</code> 的同义名，而 <code>retq</code> 是 <code>ret</code> 的同义名。查阅 Intel 和 AMD 关于 <code>rep</code> 的文档会发现，它通常用来实现重复的字符串操作，用在这里似乎很不合适。这个问题的答案藏在 AMD 给编译器编写者的指导意见中：他们建议用 <code>rep</code> 后跟 <code>ret</code> 的组合，来避免使 <code>ret</code> 指令成为条件跳转指令的目标。如果没有 <code>rep</code>，当分支不跳转时，<code>jg</code> 指令（汇编代码的第 7 行）会继续执行到 <code>ret</code> 指令；而根据 AMD 的说法，当 <code>ret</code> 指令是通过跳转指令到达时，处理器不能正确预测 <code>ret</code> 指令的目的。这里的 <code>rep</code> 就是一条空操作，把它作为跳转目标插入，除了能让代码在 AMD 处理器上运行得更快之外，不会改变代码的其他行为。在本书后面的代码中再遇到 <code>rep</code> 或 <code>repz</code>，我们可以放心地无视它们。</p>
+</blockquote>
+<h3 id="2-3-用跳转实现条件分支"><a href="#2-3-用跳转实现条件分支" class="headerlink" title="2.3 用跳转实现条件分支"></a>2.3 用跳转实现条件分支</h3><p>将条件表达式和语句从 C 语言翻译成机器代码，最常用的方式是结合有条件和无条件跳转。</p>
+<h4 id="示例代码"><a href="#示例代码" class="headerlink" title="示例代码"></a>示例代码</h4><p>例如，下面的 C 代码（对应原书图 3-16a）是一个计算两数之差绝对值的函数。这个函数有一个副作用：它会增加两个计数器，具体加哪个由比较结果决定，两个计数器编码为全局变量 <code>lt_cnt</code> 和 <code>ge_cnt</code>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> lt_cnt = <span class="number">0</span>;</span><br><span class="line"><span class="type">long</span> ge_cnt = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="type">long</span> <span class="title function_">absdiff_se</span><span class="params">(<span class="type">long</span> x, <span class="type">long</span> y)</span></span><br><span class="line">{</span><br><span class="line">    <span class="type">long</span> result;</span><br><span class="line">    <span class="keyword">if</span> (x &lt; y) {</span><br><span class="line">        lt_cnt++;</span><br><span class="line">        result = y - x;</span><br><span class="line">    } <span class="keyword">else</span> {</span><br><span class="line">        ge_cnt++;</span><br><span class="line">        result = x - y;</span><br><span class="line">    }</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p>把这个 C 代码翻译成机器代码再转回 C 语言，可以得到下面的 <code>gotodiff_se</code>（对应原书图 3-16b）。它使用了 C 语言的 <code>goto</code> 语句——该语句类似于汇编代码中的无条件跳转。虽然使用 <code>goto</code> 通常被认为是不好的编程风格（会让代码难以阅读和调试），但本文用它是为了构造出与汇编代码控制流一一对应的 C 程序，我们称这种风格为「goto 代码」：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="title function_">gotodiff_se</span><span class="params">(<span class="type">long</span> x, <span class="type">long</span> y)</span></span><br><span class="line">{</span><br><span class="line">    <span class="type">long</span> result;</span><br><span class="line">    <span class="keyword">if</span> (x &gt;= y)</span><br><span class="line">        <span class="keyword">goto</span> x_ge_y;</span><br><span class="line">    lt_cnt++;</span><br><span class="line">    result = y - x;</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">x_ge_y:</span><br><span class="line">    ge_cnt++;</span><br><span class="line">    result = x - y;</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p>GCC 为 <code>absdiff_se</code> 生成的汇编代码（对应原书图 3-16c）如下。它首先用 <code>cmpq</code> 比较两个操作数并设置条件码；如果结果表明 <code>x &gt;= y</code>，<code>jge</code> 就会跳到 <code>.L2</code> 分支——在那里 <code>ge_cnt++</code>、计算 <code>x - y</code> 作为返回值并返回；否则落入上一分支，执行 <code>lt_cnt++</code>、计算 <code>y - x</code>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"># x in %rdi, y in %rsi</span><br><span class="line">absdiff_se:</span><br><span class="line">    cmpq    %rsi, %rdi          # 比较 x 与 y</span><br><span class="line">    jge     .L2                 # 若 x &gt;= y，跳转到 .L2</span><br><span class="line">    addq    $1, lt_cnt(%rip)    # lt_cnt++</span><br><span class="line">    subq    %rdi, %rsi          # result = y - x</span><br><span class="line">    movq    %rsi, %rax</span><br><span class="line">    ret</span><br><span class="line">.L2:</span><br><span class="line">    addq    $1, ge_cnt(%rip)    # ge_cnt++</span><br><span class="line">    subq    %rsi, %rdi          # result = x - y</span><br><span class="line">    movq    %rdi, %rax</span><br><span class="line">    ret</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>关于 <code>addq $1, lt_cnt(%rip)</code> 这行：<code>lt_cnt</code> 是定义在 C 源文件里的全局变量，汇编器无法预知它最终会被链接到哪个地址，因此这里采用的是 <strong>RIP 相对寻址</strong>——把目标地址写成「下一条指令的地址（<code>%rip</code>）+ 一个由链接器填充的偏移量」。CPU 执行这条指令时，<code>%rip</code> 已指向下一条指令，用 <code>%rip</code> 加上指令中编码的偏移量，就能算出 <code>lt_cnt</code> 在内存中的真实地址，再把 1 加到该内存单元上，从而完成 <code>lt_cnt++</code>。这也正是全局变量在位置无关代码（PIC）中的典型访问方式。</p>
+</blockquote>
+<p>对比 <code>absdiff_se</code> 的汇编与 <code>gotodiff_se</code> 的 goto 代码可以看到，两者的控制流高度一致：<code>if (x &gt;= y) goto x_ge_y;</code> 对应 <code>jge .L2</code>，<code>lt_cnt++; result = y - x; return result;</code> 对应中间那几条指令，<code>x_ge_y:</code> 标签之后的代码则对应 <code>.L2</code> 分支。</p>
+<h4 id="通用模板"><a href="#通用模板" class="headerlink" title="通用模板"></a>通用模板</h4><p>C 语言中 <code>if-else</code> 语句的通用形式如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (test-expr)</span><br><span class="line">    then-statement</span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">    <span class="keyword">else</span>-statement</span><br></pre></td></tr></table></figure>
+
+<p>其中 <code>test-expr</code> 是一个整数表达式，取值为 0（解释为「假」）或非 0（解释为「真」），两个分支语句（<code>then-statement</code> 或 <code>else-statement</code>）只会执行其中一个。</p>
+<p>对这种通用形式，汇编实现通常会采用下面的结构。这里我们用 C 语法来描述控制流：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">    t = test-expr;</span><br><span class="line">    <span class="keyword">if</span> (!t)</span><br><span class="line">        <span class="keyword">goto</span> <span class="literal">false</span>;</span><br><span class="line">    then-statement</span><br><span class="line">    <span class="keyword">goto</span> done;</span><br><span class="line"><span class="literal">false</span>:</span><br><span class="line">    <span class="keyword">else</span>-statement</span><br><span class="line">done:</span><br></pre></td></tr></table></figure>
+
+<p>也就是说，汇编器会为 <code>then-statement</code> 和 <code>else-statement</code> 各生成一块代码，再插入条件分支与无条件分支，以保证最终只执行正确的代码块：<code>test-expr</code> 为真就落入 <code>then</code> 块，执行完用无条件跳转越过 <code>else</code> 块；为假则 <code>goto false</code> 直接进入 <code>else</code> 块。</p>
+<h4 id="练习题"><a href="#练习题" class="headerlink" title="练习题"></a>练习题</h4><p>已知下列 C 代码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">cond</span><span class="params">(<span class="type">long</span> a, <span class="type">long</span> *p)</span></span><br><span class="line">{</span><br><span class="line">    <span class="keyword">if</span> (p &amp;&amp; a &gt; *p)</span><br><span class="line">        *p = a;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p>GCC 会产生下面的汇编代码：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># a in %rdi, p in %rsi</span><br><span class="line">cond:</span><br><span class="line">    testq   %rsi, %rsi      # p 是否为 NULL？</span><br><span class="line">    je      .L1             # 若 p == NULL，跳过赋值</span><br><span class="line">    cmpq    %rdi, (%rsi)    # 比较 a 与 *p</span><br><span class="line">    jge     .L1             # 若 a &lt;= *p，跳过赋值</span><br><span class="line">    movq    %rdi, (%rsi)    # *p = a</span><br><span class="line">.L1:</span><br><span class="line">    rep; ret</span><br></pre></td></tr></table></figure>
+
+<p><strong>请说明：为什么 C 语言代码中只有一个 <code>if</code> 语句，而汇编代码包含两个条件分支？</strong></p>
+<p>答案：第一个条件分支（<code>je</code>）是 <code>&amp;&amp;</code> 表达式实现的一部分。如果对 <code>p</code> 为非空的测试失败（<code>p == NULL</code>），代码会跳过对 <code>a &gt; *p</code> 的测试——这正是 <code>&amp;&amp;</code> 的短路特性：一旦左侧为假，右侧根本不会被求值，自然也就不会去解引用 <code>p</code>。第二个条件分支（<code>jge</code>）才是对 <code>a &gt; *p</code> 本身的判断。两者都跳到 <code>.L1</code> 跳过赋值，保证只有 <code>p != NULL &amp;&amp; a &gt; *p</code> 成立时才执行 <code>*p = a</code>。</p>
+<hr>
+<h2 id="三、条件传送指令"><a href="#三、条件传送指令" class="headerlink" title="三、条件传送指令"></a>三、条件传送指令</h2><p>实现条件操作的传统方法，是通过<strong>基于控制的条件转移</strong>：当条件满足时，程序沿着一条执行路径走下去，条件不满足时则走另一条路径。这种机制简单而通用，但在现代处理器上，它可能会非常低效（原因见 3.2 节）。</p>
+<p>另一种替代策略是<strong>基于数据的条件转移</strong>：把条件操作的两种结果都计算出来，再根据条件是否满足从中选取一个。这种策略只在一些受限制的情况下才可行——比如两条路径都必须没有副作用（不能修改内存或计数变量），而且都能安全执行（例如不能出现空指针解引用这类可能出错的操作）。不过只要可行，就能用一条简单的<strong>条件传送指令</strong>（conditional move）来实现，它更符合现代处理器的性能特性。</p>
+<h3 id="3-1-示例代码"><a href="#3-1-示例代码" class="headerlink" title="3.1 示例代码"></a>3.1 示例代码</h3><p>下面的 C 代码（对应原书图 3-17a）给出了一个可以用条件传送来编译的示例。这个函数计算参数 <code>x</code> 和 <code>y</code> 之差的绝对值，和 2.3 节中的 <code>absdiff_se</code> 一样；不过 <code>absdiff_se</code> 的分支里有副作用（会修改 <code>lt_cnt</code> 或 <code>ge_cnt</code> 的值），而这个版本只是单纯地计算函数要返回的值：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="title function_">absdiff</span><span class="params">(<span class="type">long</span> x, <span class="type">long</span> y)</span></span><br><span class="line">{</span><br><span class="line">    <span class="type">long</span> result;</span><br><span class="line">    <span class="keyword">if</span> (x &lt; y)</span><br><span class="line">        result = y - x;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        result = x - y;</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p>GCC 为该函数生成的汇编代码（对应原书图 3-17c）与图 3-17b 中手写的 C 函数 <code>cmovdiff</code> 有相似的形式。我们先看这个 C 版本：它既计算了 <code>y - x</code>，也计算了 <code>x - y</code>，分别命名为 <code>rval</code> 和 <code>eval</code>；随后测试 <code>x</code> 是否大于等于 <code>y</code>，如果是，就在函数返回 <code>rval</code> 之前把 <code>eval</code> 复制到 <code>rval</code> 中：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="title function_">cmovdiff</span><span class="params">(<span class="type">long</span> x, <span class="type">long</span> y)</span></span><br><span class="line">{</span><br><span class="line">    <span class="type">long</span> rval = y - x;</span><br><span class="line">    <span class="type">long</span> eval = x - y;</span><br><span class="line">    <span class="type">long</span> ntest = x &gt;= y;</span><br><span class="line">    <span class="comment">/* 下一行应该编译成一条指令 */</span></span><br><span class="line">    <span class="keyword">if</span> (ntest)</span><br><span class="line">        rval = eval;</span><br><span class="line">    <span class="keyword">return</span> rval;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p>再看图 3-17c 的汇编代码，它的逻辑与 <code>cmovdiff</code> 完全相同。关键就在于其中的 <code>cmovge</code> 指令——它实现了 <code>cmovdiff</code> 里的那个条件赋值：只有当 <code>cmpq</code> 指令的比较结果表明一个值大于等于另一个值（正如后缀 <code>ge</code> 表明的那样）时，才把数据源寄存器传送到目的寄存器：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># x in %rdi, y in %rsi</span><br><span class="line">absdiff:</span><br><span class="line">    movq    %rsi, %rax      # 计算 y - x，即 rval</span><br><span class="line">    subq    %rdi, %rax</span><br><span class="line">    movq    %rdi, %rdx      # 计算 x - y，即 eval</span><br><span class="line">    subq    %rsi, %rdx</span><br><span class="line">    cmpq    %rsi, %rdi      # 比较 x 与 y，设置条件码</span><br><span class="line">    cmovge  %rdx, %rax      # 若 x &gt;= y，将 eval 复制到 rval（%rax）</span><br><span class="line">    ret</span><br></pre></td></tr></table></figure>
+
+<p>对照着看就能发现对应关系：<code>rval</code> 放在 <code>%rax</code>、<code>eval</code> 放在 <code>%rdx</code>，<code>cmpq</code> 完成 <code>ntest = x &gt;= y</code> 的求值，而 <code>cmovge %rdx, %rax</code> 正是 <code>if (ntest) rval = eval;</code> 的机器级实现——条件不满足时它什么都不做，<code>%rax</code> 保持 <code>y - x</code> 不变；条件满足时则把 <code>x - y</code> 送进 <code>%rax</code>。无论走哪条路径，最终 <code>%rax</code> 里都是差的绝对值。</p>
+<h3 id="3-2-为什么条件数据传送性能更好"><a href="#3-2-为什么条件数据传送性能更好" class="headerlink" title="3.2 为什么条件数据传送性能更好"></a>3.2 为什么条件数据传送性能更好</h3><p>要理解为什么基于条件数据传送的代码（如 3.1 节的 <code>absdiff</code>）会比基于条件控制转移的代码（如 2.3 节的 <code>absdiff_se</code>）更快，先要了解现代处理器是如何运行的。正如第 4、5 章将要讲到的，处理器通过**流水线（pipelining）**获得高性能：一条指令的处理被拆成一系列阶段，每个阶段只完成一小部分工作——取指令、确定指令类型、读数据、执行算术运算、写回数据、更新程序计数器。相邻指令的阶段可以重叠进行，例如在取一条指令的同时，执行它前面那条指令的算术运算。这样一来，只要流水线保持「充满」待执行指令，处理器就能持续高速运转。</p>
+<p>流水线高效运转的前提，是<strong>能提前确定接下来要执行的指令序列</strong>。条件跳转（也称「分支」）恰恰破坏了这一点：分支条件求值完成之前，无法判断执行流往哪边走。处理器为此引入了精密的分支预测逻辑，猜测每条跳转指令是否会被执行。只要猜得足够准（现代微处理器设计的成功率在 90% 以上），流水线就能保持充满；可一旦<strong>预测错误</strong>，处理器必须丢弃为分支之后所有指令已做的工作，再从头用正确位置处的指令填充流水线。一次错误预测会招致很严重的惩罚，浪费大约 <mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="2.262ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 1000 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="15\sim30"><g data-mml-node="mn" data-latex="15"><path data-c="31" d="M269 666C228 624 168 603 89 603L89 564C141 564 184 572 217 588L217 82C217 64 213 52 204 47C195 42 170 39 130 39L95 39L95 0C120 2 174 3 257 3C340 3 394 2 419 0L419 39L384 39C343 39 318 42 310 47C302 52 297 64 297 82L297 636C297 660 295 666 269 666Z"></path><path data-c="35" d="M118 315C123 315 129 319 134 326C164 371 205 393 257 393C292 393 319 373 337 332C348 305 354 264 354 209C354 146 346 102 331 76C306 35 272 14 229 14C162 14 109 62 91 114C94 113 96 114 100 114C130 114 155 137 155 167C155 198 130 219 100 219C65 219 50 200 50 163C50 63 131-22 231-22C292-22 344 0 386 44C428 88 449 141 449 202C449 260 432 310 398 353C361 400 315 423 259 423C212 423 171 408 138 378L138 556C165 548 191 544 218 544C264 544 304 555 338 578C369 597 390 616 402 634C408 642 411 648 411 651C411 661 406 666 396 666C341 645 294 634 256 634C211 634 168 643 127 662C122 664 118 665 114 665C105 665 100 656 100 637L100 345C100 324 100 315 118 315Z" transform="translate(500,0)"></path></g></g></g></svg><mjx-break size="4"> </mjx-break><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="4.64ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 2050.8 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="15\sim30"><g data-mml-node="mo" data-latex="\sim"><path data-c="223C" d="M597 143C674 166 714 235 717 350C717 361 712 366 701 366C691 366 686 361 685 351C684 308 675 275 657 251C637 224 592 194 548 194C518 194 486 207 453 233C434 248 418 261 406 271C335 333 274 364 222 364C207 364 192 362 177 357C92 332 59 262 56 150C56 139 61 134 72 134C82 134 87 139 88 149C89 192 98 225 116 249C135 275 182 306 225 306C255 306 287 293 320 267C339 252 355 239 367 229C438 167 499 136 551 136C566 136 582 138 597 143Z"></path></g><g data-mml-node="mn" data-latex="30" transform="translate(1050.8,0)"><path data-c="33" d="M303 353C369 378 431 441 431 526C431 569 410 604 369 631C333 654 292 666 246 666C201 666 162 654 127 631C88 605 68 571 68 528C68 495 90 472 122 472C154 472 176 495 176 527C176 560 157 578 119 580C145 615 186 633 242 633C302 633 332 598 332 527C332 485 324 450 309 421C282 373 245 364 183 364C171 362 165 357 165 348C165 333 172 333 192 333L235 333C310 333 348 280 348 173C348 88 317 14 241 14C176 14 128 36 99 80C134 79 160 105 160 139C160 173 135 198 101 198C62 198 42 178 42 137C42 88 64 49 108 18C147-9 193-22 244-22C301-22 350-3 393 34C436 71 457 117 457 173C457 267 383 332 303 353Z"></path><path data-c="30" d="M249-22C390-22 460 92 460 320C460 473 428 575 365 625C330 652 291 666 250 666C109 666 39 551 39 320C39 136 88-22 249-22M361 524C368 489 371 425 371 332C371 240 367 172 360 128C347 48 310 8 249 8C226 8 203 17 182 34C155 57 139 104 132 176C129 201 128 253 128 332C128 419 131 480 136 513C145 568 163 603 191 618C213 630 232 636 249 636C314 636 350 583 361 524Z" transform="translate(500,0)"></path></g></g></g></svg></mjx-container> 个时钟周期，使程序性能严重下降。</p>
+<p>条件传送则完全绕开了这个问题：它把两条路径的结果都算好，用一条 <code>cmov</code> 指令按条件选取，<strong>根本不产生分支</strong>，也就没有「猜错」的可能。控制流不依赖数据，处理器始终能保持流水线充满。</p>
+<p>原书在 Intel Haswell 处理器上实测了 <code>absdiff</code> 函数的两种实现，结论很直观：两个版本里的计算都只花约 1 个时钟周期，性能差距几乎全部来自分支预测惩罚。对于带条件跳转的版本，当分支行为模式很容易预测时，每次调用约需 8 个时钟周期；当分支模式随机（例如典型的应用中 <code>x &lt; y</code> 几乎不可预测，预测硬件只有约 50% 的正确率）时，每次调用约需 17.50 个时钟周期——据此可推断一次分支预测错误的惩罚约为 19 个时钟周期，函数耗时在 8 到 27 个周期之间波动。而使用条件传送的版本，无论测试数据如何，每次调用都稳定在约 8 个时钟周期。</p>
+<h3 id="3-3-CMOV-指令"><a href="#3-3-CMOV-指令" class="headerlink" title="3.3 CMOV 指令"></a>3.3 CMOV 指令</h3><p>下表（对应原书图 3-18）列举了 x86-64 上一些可用的条件传送指令。每条指令都有两个操作数：源操作数 <code>S</code>（可以是寄存器或内存地址）和目的寄存器 <code>R</code>。与 <code>SET</code>（见 1.2 节）和跳转指令（见 2.1 节）类似，这些指令的执行效果同样取决于条件码的值：源值既可以从内存读取，也可以从源寄存器读取，但只有当指定的条件成立时，才会被复制到目的寄存器中。</p>
+<table>
+<thead>
+<tr>
+<th><code>cmov</code> 指令</th>
+<th>同义名</th>
+<th>传送条件</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>cmove S, D</code></td>
+<td><code>cmovz</code></td>
+<td><code>ZF</code></td>
+<td>相等 / 为零</td>
+</tr>
+<tr>
+<td><code>cmovne S, D</code></td>
+<td><code>cmovnz</code></td>
+<td><code>~ZF</code></td>
+<td>不相等 / 不为零</td>
+</tr>
+<tr>
+<td><code>cmovs S, D</code></td>
+<td>—</td>
+<td><code>SF</code></td>
+<td>负数</td>
+</tr>
+<tr>
+<td><code>cmovns S, D</code></td>
+<td>—</td>
+<td><code>~SF</code></td>
+<td>非负数</td>
+</tr>
+<tr>
+<td><code>cmovg S, D</code></td>
+<td><code>cmovnle</code></td>
+<td><code>~(SF^OF) &amp; ~ZF</code></td>
+<td>大于（有符号 &gt;）</td>
+</tr>
+<tr>
+<td><code>cmovge S, D</code></td>
+<td><code>cmovnl</code></td>
+<td><code>~(SF^OF)</code></td>
+<td>大于等于（有符号 &gt;=）</td>
+</tr>
+<tr>
+<td><code>cmovl S, D</code></td>
+<td><code>cmovnge</code></td>
+<td><code>SF^OF</code></td>
+<td>小于（有符号 &lt;）</td>
+</tr>
+<tr>
+<td><code>cmovle S, D</code></td>
+<td><code>cmovng</code></td>
+<td><code>(SF^OF) | ZF</code></td>
+<td>小于等于（有符号 &lt;=）</td>
+</tr>
+<tr>
+<td><code>cmova S, D</code></td>
+<td><code>cmovnbe</code></td>
+<td><code>~CF &amp; ~ZF</code></td>
+<td>大于（无符号 &gt;）</td>
+</tr>
+<tr>
+<td><code>cmovae S, D</code></td>
+<td><code>cmovnb</code></td>
+<td><code>~CF</code></td>
+<td>大于等于（无符号 &gt;=）</td>
+</tr>
+<tr>
+<td><code>cmovb S, D</code></td>
+<td><code>cmovnae</code></td>
+<td><code>CF</code></td>
+<td>小于（无符号 &lt;）</td>
+</tr>
+<tr>
+<td><code>cmovbe S, D</code></td>
+<td><code>cmovna</code></td>
+<td><code>CF | ZF</code></td>
+<td>小于等于（无符号 &lt;=）</td>
+</tr>
+</tbody></table>
+<p>表中 <code>S</code> 为源操作数、<code>D</code> 为目的寄存器。可以看到，条件传送指令的命名与传送条件和前面的 <code>set</code>、<code>jmp</code> 一族完全对应——无符号比较只依赖 <code>CF</code> 与 <code>ZF</code>，有符号比较依赖 <code>SF</code>、<code>OF</code> 与 <code>ZF</code>。</p>
+<p>条件传送指令的源与目的可以是 16 位、32 位或 64 位长，但不支持单字节（8 位）的条件传送。由于汇编器可以从目标寄存器的名字推断出操作数的长度，因此对所有长度的操作数，都可以沿用同一条指令助记符。</p>
+<p>与条件跳转不同，处理器无需预测测试的结果就能执行条件传送。它只是读取源值（可能来自内存），检查条件码，然后决定是更新目的寄存器，还是让它保持不变。</p>
+<h4 id="条件控制转移和条件传送的对比"><a href="#条件控制转移和条件传送的对比" class="headerlink" title="条件控制转移和条件传送的对比"></a>条件控制转移和条件传送的对比</h4><p>考虑下面的条件表达式及赋值的通用形式：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">v = test-expr ? then-expr : <span class="keyword">else</span>-expr;</span><br></pre></td></tr></table></figure>
+
+<p>用条件控制转移的标准方法编译这个表达式，会得到如下所示的形式：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">    t = test-expr;</span><br><span class="line">    <span class="keyword">if</span> (!t)</span><br><span class="line">        <span class="keyword">goto</span> <span class="literal">false</span>;</span><br><span class="line">    v = then-expr;</span><br><span class="line">    <span class="keyword">goto</span> done;</span><br><span class="line"><span class="literal">false</span>:</span><br><span class="line">    v = <span class="keyword">else</span>-expr;</span><br><span class="line">done:</span><br></pre></td></tr></table></figure>
+
+<p>这段代码包含两个代码序列：一个对 <code>then-expr</code> 求值，另一个对 <code>else-expr</code> 求值；通过组合使用条件跳转与无条件跳转，保证最终只有其中一个序列会被执行。</p>
+<p>而基于条件传送的实现，则会对 <code>then-expr</code> 和 <code>else-expr</code> 都求值，最终值的选择取决于对 <code>test-expr</code> 的求值结果。可以用下面的抽象代码来描述：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">v  = then-expr;</span><br><span class="line">ve = <span class="keyword">else</span>-expr;</span><br><span class="line">t  = test-expr;</span><br><span class="line"><span class="keyword">if</span> (!t)</span><br><span class="line">    v = ve;</span><br></pre></td></tr></table></figure>
+
+<p>在这个序列中，最后一条语句正是用条件传送实现的——只有当测试条件 <code>t</code> 不成立时，<code>ve</code> 的值才会被复制到 <code>v</code> 中。</p>
+<h4 id="条件传送指令的限制"><a href="#条件传送指令的限制" class="headerlink" title="条件传送指令的限制"></a>条件传送指令的限制</h4><p>无论测试结果如何，上面的抽象代码都会对 <code>then-expr</code> 与 <code>else-expr</code> 都求值；如果其中任何一个表达式可能产生错误条件或副作用，就会导致非法的行为。此前的 <code>absdiff_se</code> 函数就属于这种情况——事实上，我们当初正是通过在示例中<strong>引入</strong>副作用，才强制 GCC 用条件转移而非条件传送来编译这个函数。</p>
+<p>作为说明，考虑下面这个 C 函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="title function_">cread</span><span class="params">(<span class="type">long</span> *xp)</span></span><br><span class="line">{</span><br><span class="line">    <span class="keyword">return</span> xp ? *xp : <span class="number">0</span>;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p>乍一看，这段代码似乎很适合被编译成使用条件传送——当指针为空时将结果设置为 0。其汇编代码可能如下所示：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"># xp in %rdi</span><br><span class="line">cread:</span><br><span class="line">    movq	(%rdi), %rax	   # v = *xp（无条件解引用！）</span><br><span class="line">    testq   %rdi, %rdi         # 测试 xp 是否为空</span><br><span class="line">	movl	$0, %edx		   # ve = 0</span><br><span class="line">    cmovne  %rdx, %rax         # 若 xp 非空，取 *xp；否则保持 0</span><br><span class="line">    ret</span><br></pre></td></tr></table></figure>
+
+<p>不过，这样的实现是非法的：即使测试条件为假，示例中的 <code>movq</code> 指令仍会对 <code>xp</code> 进行间接引用，从而触发空指针解引用的错误。因此，这段代码必须改用条件分支来编译。</p>
+<p>使用条件传送也并非总能提高代码效率。例如，如果 <code>then-expr</code> 或 <code>else-expr</code> 的求值需要大量的计算，那么当对应条件不成立时，这些计算就白费了。编译器必须在「被浪费的计算」与「分支预测错误造成的性能处罚」之间权衡。说实话，编译器往往缺少足够的信息来做出可靠的决定——例如，它们并不知道某个分支会在多大程度上遵循可预测的模式。我们对 GCC 的实测表明：只有当两个表达式都很容易计算（比如各自只对应一条加法指令）时，它才会采用条件传送；而根据经验，即使不少分支预测错误的开销超过了更复杂的计算，GCC 多数情况下仍会选择条件控制转移。</p>
+<hr>
+<h2 id="四、循环的实现"><a href="#四、循环的实现" class="headerlink" title="四、循环的实现"></a>四、循环的实现</h2><p>C 语言提供了多种循环结构：<code>do-while</code>、<code>while</code> 和 <code>for</code>。汇编语言中并没有专门的循环指令，而是用条件测试与跳转指令组合起来实现循环的效果。我们会循序渐进地研究循环的翻译方式：先从 <code>do-while</code> 开始，再研究实现起来更复杂的循环。</p>
+<h3 id="4-1-do-while-循环"><a href="#4-1-do-while-循环" class="headerlink" title="4.1 do-while 循环"></a>4.1 do-while 循环</h3><p>do-while 语句的通用形式如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">do</span></span><br><span class="line">    body-statement</span><br><span class="line">    <span class="title function_">while</span><span class="params">(test-expr)</span>;</span><br></pre></td></tr></table></figure>
+
+<p>这个循环的效果是反复执行 <code>body-statement</code>，每次都对 <code>test-expr</code> 求值；只要求值结果为非零，就继续循环。可以看到，<code>body-statement</code> 至少会被执行一次。</p>
+<p>这种通用形式可以被翻译成下面这种使用条件与 <code>goto</code> 语句表达的版本：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">loop:</span><br><span class="line">    body-statement</span><br><span class="line">    t = test-expr;</span><br><span class="line">    <span class="keyword">if</span> (t)</span><br><span class="line">        <span class="keyword">goto</span> loop;</span><br></pre></td></tr></table></figure>
+
+<p>也就是说，每次循环程序都会先执行循环体里的语句，再执行测试表达式；如果测试为真，就跳回循环开始处再执行一次。</p>
+<h4 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h4><p>看一个示例：图 3-19a（即下方所示）给出了一个用 <code>do-while</code> 循环计算参数阶乘（记作 <code>n!</code>）的函数。该函数只计算 <code>n &gt; 0</code> 时 <code>n!</code> 的值，无法正确算出 <code>0! = 1</code>。</p>
+<p>图 3-19b 所示的 <code>goto</code> 代码展示了如何把循环改写成低级的「测试 + 条件跳转」组合：<code>result</code> 初始化之后程序进入循环，先执行循环体（更新变量 <code>result</code> 和 <code>n</code>），再测试 <code>n &gt; 1</code>；若为真，就跳回循环开始处。图 3-19c 所示的汇编代码正是这段 <code>goto</code> 代码的原型，其中条件跳转指令 <code>jg</code> 是实现循环的关键指令——它决定了是继续重复循环，还是退出循环。</p>
+<p><strong>（a）用 <code>do-while</code> 写的 C 函数 <code>fact_do</code>：</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="title function_">fact_do</span><span class="params">(<span class="type">long</span> n)</span></span><br><span class="line">{</span><br><span class="line">    <span class="type">long</span> result = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">do</span> {</span><br><span class="line">        result *= n;</span><br><span class="line">        n = n - <span class="number">1</span>;</span><br><span class="line">    } <span class="keyword">while</span> (n &gt; <span class="number">1</span>);</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p><strong>（b）等价的 <code>goto</code> 代码：</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="title function_">fact_do</span><span class="params">(<span class="type">long</span> n)</span></span><br><span class="line">{</span><br><span class="line">    <span class="type">long</span> result = <span class="number">1</span>;</span><br><span class="line">loop:</span><br><span class="line">    result *= n;</span><br><span class="line">    n = n - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">if</span> (n &gt; <span class="number">1</span>)</span><br><span class="line">        <span class="keyword">goto</span> loop;</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p><strong>（c）GCC（<code>-Og</code>）生成的汇编代码：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># n in %rdi</span><br><span class="line">fact_do:</span><br><span class="line">    movl    $1, %eax            # result = 1</span><br><span class="line">.L2:                            # loop:</span><br><span class="line">    imulq   %rdi, %rax          # result *= n</span><br><span class="line">    subq    $1, %rdi            # n = n - 1</span><br><span class="line">    cmpq    $1, %rdi            # n 与 1 比较</span><br><span class="line">    jg      .L2                 # 若 n &gt; 1，跳回 loop</span><br><span class="line">    rep; ret</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-while-循环"><a href="#4-2-while-循环" class="headerlink" title="4.2 while 循环"></a>4.2 while 循环</h3><p>while 语句的通用形式如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span> (test-expr)</span><br><span class="line">    body-statement;</span><br></pre></td></tr></table></figure>
+
+<p>与 <code>do-while</code> 不同，<code>while</code> 会在第一次执行 <code>body-statement</code> 之前就对 <code>test-expr</code> 求值，因此循环体有可能一次都不会执行。将 <code>while</code> 循环翻译成机器代码有多种方法，GCC 在代码生成时会使用其中两种。这两种方法采用与 <code>do-while</code> 相同的循环结构，区别只在于它们实现<strong>初始测试</strong>的方式不同。</p>
+<h4 id="跳转到中间"><a href="#跳转到中间" class="headerlink" title="跳转到中间"></a>跳转到中间</h4><p>第一种翻译方法称为<strong>跳转到中间</strong>（jump to middle）：先执行一个无条件跳转，跳到位于循环结尾处的测试，借此完成初始测试。下面这个模板表达的就是这种方法——它把通用的 <code>while</code> 循环格式翻译成 <code>goto</code> 代码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">    <span class="keyword">goto</span> test;</span><br><span class="line">loop:</span><br><span class="line">    body-statement</span><br><span class="line">test:</span><br><span class="line">    t = test-expr;</span><br><span class="line">    <span class="keyword">if</span> (t)</span><br><span class="line">        <span class="keyword">goto</span> loop;</span><br></pre></td></tr></table></figure>
+
+<p>作为示例，下方代码（对应图 3-20a） 给出使用 <code>while</code> 循环的阶乘函数实现，它能够正确计算 <code>0! = 1</code>。它旁边的函数 <code>fact_while_jm_goto</code>（图 3-20b）是 GCC 在优化命令行选项 <code>-Og</code> 下产生的汇编代码的 C 语言翻译。对比 <code>fact_while_jm_goto</code>（图 3-20b）与 <code>fact_do</code> 的 goto 代码（图 3-19b）可以发现，两者的代码非常相似，区别仅在于：<code>fact_while_jm_goto</code> 在循环前多了一条 <code>goto test</code> 语句，使得程序在修改 <code>result</code> 或 <code>n</code> 的值之前，先执行对 <code>n</code> 的测试。</p>
+<p>图的最下面（图 3-20c）给出的是实际生成的汇编代码。可以看到编译器采用的正是跳转到中间的翻译方法：先在第 4 行用 <code>jmp</code> 跳转到以标号 <code>.L2</code> 开头的测试部分。</p>
+<p><strong>（a）用 <code>while</code> 写的 C 函数 <code>fact_while</code>：</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="title function_">fact_while</span><span class="params">(<span class="type">long</span> n)</span></span><br><span class="line">{</span><br><span class="line">    <span class="type">long</span> result = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">while</span> (n &gt; <span class="number">1</span>) {</span><br><span class="line">        result *= n;</span><br><span class="line">        n = n - <span class="number">1</span>;</span><br><span class="line">    }</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p><strong>（b）<code>fact_while_jm_goto</code>：跳转到中间版本的 <code>goto</code> 代码（对应 <code>-Og</code> 汇编的 C 翻译）：</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="title function_">fact_while_jm_goto</span><span class="params">(<span class="type">long</span> n)</span></span><br><span class="line">{</span><br><span class="line">    <span class="type">long</span> result = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">goto</span> test;</span><br><span class="line">loop:</span><br><span class="line">    result *= n;</span><br><span class="line">    n = n - <span class="number">1</span>;</span><br><span class="line">test:</span><br><span class="line">    <span class="keyword">if</span> (n &gt; <span class="number">1</span>)</span><br><span class="line">        <span class="keyword">goto</span> loop;</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p><strong>（c）GCC（<code>-Og</code>）实际生成的汇编代码：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"># n in %rdi</span><br><span class="line">fact_while:</span><br><span class="line">    movl    $1, %eax            # result = 1</span><br><span class="line">    jmp     .L2                 # goto test</span><br><span class="line">.L3:                            # loop:</span><br><span class="line">    imulq   %rdi, %rax          # result *= n</span><br><span class="line">    subq    $1, %rdi            # n = n - 1</span><br><span class="line">.L2:                            # test:</span><br><span class="line">    cmpq    $1, %rdi            # n &gt; 1 ?</span><br><span class="line">    jg      .L3                 # 若是，跳回 loop</span><br><span class="line">    rep; ret</span><br></pre></td></tr></table></figure>
+
+<h4 id="guarded-do"><a href="#guarded-do" class="headerlink" title="guarded-do"></a>guarded-do</h4><p>第二种翻译方法称为 <strong>guarded-do</strong>：先用一个条件分支来判断初始条件——若初始条件不成立就跳过整个循环，从而把代码变换成 <code>do-while</code> 循环。当使用较高的优化等级编译时（例如命令行选项 <code>-O1</code>），GCC 会采用这种策略。可以用如下模板来表达这种方法——它把通用的 <code>while</code> 循环格式翻译成 <code>do-while</code> 循环：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">    <span class="keyword">if</span> (!test-expr)</span><br><span class="line">        <span class="keyword">goto</span> done;</span><br><span class="line">    <span class="keyword">do</span></span><br><span class="line">        body-statement</span><br><span class="line">        <span class="title function_">while</span> <span class="params">(test-expr)</span>;</span><br><span class="line">done:</span><br></pre></td></tr></table></figure>
+
+<p>相应地，还可以把它进一步翻译成 <code>goto</code> 代码，如下所示：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">    <span class="keyword">if</span> (!test-expr)</span><br><span class="line">        <span class="keyword">goto</span> done;</span><br><span class="line">loop:</span><br><span class="line">    body-statement</span><br><span class="line">    <span class="title function_">if</span> <span class="params">(test-expr)</span></span><br><span class="line">        <span class="keyword">goto</span> loop;</span><br><span class="line">done:</span><br></pre></td></tr></table></figure>
+
+<p>再来看一个例子。下方代码（对应图 3-21）用与 图 3-20 相同的阶乘 C 代码，展示了 GCC 在命令行选项 <code>-O1</code> 下的编译结果：图 3-21c 给出的是实际生成的汇编代码，图 3-21b 则是这段汇编代码更易读的 C 语言表示。对照 <code>goto</code> 代码可以看到：如果 <code>n</code> 的初始值满足 <code>n &lt;= 1</code>，就会跳过整个循环；循环本身的基本结构与该函数 <code>do-while</code> 版本（图 3-19）产生的一致。不过有一个有趣的特性：循环测试从原始 C 代码的 <code>n &gt; 1</code> 变成了 <code>n != 1</code>。编译器知道只有当 <code>n &gt; 1</code> 时才会进入循环，而循环体又把 <code>n</code> 递减——递减后的 <code>n</code> 只可能是 1 或更大的值，绝不会是 0；因此测试 <code>n != 1</code> 与测试 <code>n &gt; 1</code> 在这里是等价的。</p>
+<p><strong>（b）<code>fact_while_gd</code> 的 <code>goto</code> 代码（对应 <code>-O1</code> 汇编的可读 C 表示）：</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="title function_">fact_while_gd</span><span class="params">(<span class="type">long</span> n)</span></span><br><span class="line">{</span><br><span class="line">    <span class="type">long</span> result = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">if</span> (n &lt;= <span class="number">1</span>)</span><br><span class="line">        <span class="keyword">goto</span> done;</span><br><span class="line">loop:</span><br><span class="line">    result *= n;</span><br><span class="line">    n = n - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">if</span> (n != <span class="number">1</span>)</span><br><span class="line">        <span class="keyword">goto</span> loop;</span><br><span class="line">done:</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p><strong>（c）GCC（<code>-O1</code>）实际生成的汇编代码：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"># n in %rdi</span><br><span class="line">fact_while_gd:</span><br><span class="line">    movl    $1, %eax            # result = 1</span><br><span class="line">    cmpq    $1, %rdi            # n 与 1 比较</span><br><span class="line">    jle     .L4                 # 若 n &lt;= 1，跳到 done</span><br><span class="line">.L3:                            # loop:</span><br><span class="line">    imulq   %rdi, %rax          # result *= n</span><br><span class="line">    subq    $1, %rdi            # n = n - 1</span><br><span class="line">    cmpq    $1, %rdi            # 测试 n != 1</span><br><span class="line">    jne     .L3                 # 若 n != 1，跳回 loop</span><br><span class="line">.L4:                            # done:</span><br><span class="line">    rep; ret</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-for-循环"><a href="#4-3-for-循环" class="headerlink" title="4.3 for 循环"></a>4.3 for 循环</h3><p>for 循环的通用形式如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (init-expr; test-expr; update-expr) </span><br><span class="line">    body-statement;</span><br></pre></td></tr></table></figure>
+
+<p>C 语言标准规定（有一个例外，将在练习题 3.29 中特别说明），<code>for</code> 循环的行为与下面这段等价的 <code>while</code> 循环的代码完全一致：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">init-expr;</span><br><span class="line"><span class="keyword">while</span> (test-expr) {</span><br><span class="line">    body-statement</span><br><span class="line">    update-expr;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p>即程序首先对初始化表达式 <code>init-expr</code> 求值，随后进入循环：先对测试条件 <code>test-expr</code> 求值，若测试结果为“假”就退出循环，否则执行循环体 <code>body-statement</code>，最后对更新表达式 <code>update-expr</code> 求值，如此周而复始。</p>
+<p>GCC 为 <code>for</code> 循环生成的代码，就是 <code>while</code> 循环两种翻译方式之一，具体采用哪一种取决于优化等级。</p>
+<h4 id="示例-1"><a href="#示例-1" class="headerlink" title="示例"></a>示例</h4><p>作为一个示例，考虑用 <code>for</code> 循环写的阶乘函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="title function_">fact_for</span><span class="params">(<span class="type">long</span> n)</span></span><br><span class="line">{</span><br><span class="line">    <span class="type">long</span> i;</span><br><span class="line">    <span class="type">long</span> result = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">2</span>; i &lt;= n; i++)</span><br><span class="line">        result *= i;</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p>先把 <code>for</code> 循环转换成 <code>while</code> 循环，得到下面的代码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="title function_">fact_for_while</span><span class="params">(<span class="type">long</span> n)</span></span><br><span class="line">{</span><br><span class="line">    <span class="type">long</span> i = <span class="number">2</span>;</span><br><span class="line">    <span class="type">long</span> result = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">while</span> (i &lt;= n) {</span><br><span class="line">        result *= i;</span><br><span class="line">        i++;</span><br><span class="line">    }</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p>再对 <code>while</code> 循环进行跳转到中间变换，得到如下的 <code>goto</code> 代码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> <span class="title function_">fact_for_jm_goto</span><span class="params">(<span class="type">long</span> n)</span></span><br><span class="line">{</span><br><span class="line">    <span class="type">long</span> i = <span class="number">2</span>;</span><br><span class="line">    <span class="type">long</span> result = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">goto</span> test;</span><br><span class="line">loop:</span><br><span class="line">    result *= i;</span><br><span class="line">    i++;</span><br><span class="line">test:</span><br><span class="line">    <span class="keyword">if</span> (i &lt;= n)</span><br><span class="line">        <span class="keyword">goto</span> loop;</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p>而这是使用命令行选项 <code>-Og</code> 的 GCC 所产生的汇编代码：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"># n in %rdi</span><br><span class="line">fact_for:</span><br><span class="line">    movl    $1, %eax            # result = 1</span><br><span class="line">    movl    $2, %edx            # i = 2</span><br><span class="line">    jmp     .L2                 # goto test</span><br><span class="line">.L3:                            # loop:</span><br><span class="line">    imulq   %rdx, %rax          # result *= i</span><br><span class="line">    addq    $1, %rdx            # i++</span><br><span class="line">.L2:                            # test:</span><br><span class="line">    cmpq    %rdi, %rdx          # i &lt;= n ?</span><br><span class="line">    jle     .L3                 # 若是，跳回 loop</span><br><span class="line">    rep; ret</span><br></pre></td></tr></table></figure>
+
+<p>综上所述，C 语言中所有三种形式的循环——<code>do-while</code>、<code>while</code> 和 <code>for</code>——都可以用同一种简单的策略翻译成包含一个或多个条件分支的机器代码。条件控制转移正是把循环翻译成机器代码的基本机制。</p>
+<h4 id="练习题-3-29"><a href="#练习题-3-29" class="headerlink" title="练习题 3.29"></a>练习题 3.29</h4><p>在 C 语言中，执行 <code>continue</code> 语句会导致程序跳到当前循环迭代的结尾。因此，在处理 <code>continue</code> 语句时，「把 <code>for</code> 循环翻译成 <code>while</code> 循环」的描述规则需要做一些改进。例如，考虑下面的代码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> sum = <span class="number">0</span>;</span><br><span class="line"><span class="type">long</span> i;</span><br><span class="line"><span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; <span class="number">10</span>; i++) {</span><br><span class="line">    <span class="keyword">if</span> (i &amp; <span class="number">1</span>)</span><br><span class="line">        <span class="keyword">continue</span>;</span><br><span class="line">    sum += i;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p>A. 如果只是机械地套用「把 <code>for</code> 循环翻译成 <code>while</code> 循环」的规则，会得到什么样的结果？产生的代码又有什么错误？<br>B. 如何用 <code>goto</code> 语句替代 <code>continue</code> 语句，以保证 <code>while</code> 循环的行为与 <code>for</code> 循环完全一致？</p>
+<p><strong>答案：</strong></p>
+<p>A. 套用翻译规则会得到下面的代码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> sum = <span class="number">0</span>;</span><br><span class="line"><span class="type">long</span> i = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">while</span> (i &lt; <span class="number">10</span>) {</span><br><span class="line">    <span class="keyword">if</span> (i &amp; <span class="number">1</span>)</span><br><span class="line">        <span class="keyword">continue</span>;</span><br><span class="line">    sum += i;</span><br><span class="line">    i++;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p>由于 <code>continue</code> 语句会阻止索引变量 <code>i</code> 被更新，这段代码会陷入死循环。</p>
+<p>B. 通用的解决办法是用 <code>goto</code> 语句替代 <code>continue</code> 语句：它跳过循环体中剩余的部分，直接跳到更新（update）部分：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> sum = <span class="number">0</span>;</span><br><span class="line"><span class="type">long</span> i = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">while</span> (i &lt; <span class="number">10</span>) {</span><br><span class="line">    <span class="keyword">if</span> (i &amp; <span class="number">1</span>)</span><br><span class="line">        <span class="keyword">goto</span> update;</span><br><span class="line">    sum += i;</span><br><span class="line">update:</span><br><span class="line">    i++;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="五、switch-语句的实现"><a href="#五、switch-语句的实现" class="headerlink" title="五、switch 语句的实现"></a>五、switch 语句的实现</h2><p><code>switch</code>（开关）语句可以根据一个整数索引值进行多重分支（multiway branching）。在处理具有多种可能结果的测试时，这种语句特别有用：它不仅能提高 C 代码的可读性，还能借助 <strong>跳转表</strong>（jump table）这一数据结构让实现更加高效。</p>
+<p>跳转表是一个数组，其中第 <code>i</code> 个表项是一个代码段的地址，该代码段实现的是当开关索引值等于 <code>i</code> 时程序应采取的动作。程序用开关索引值对跳转表做一次数组引用，从而确定跳转指令的目标。与使用一长串 <code>if-else</code> 语句相比，跳转表最大的优点是：执行 <code>switch</code> 语句所花的时间与开关情况的数量无关。GCC 会根据开关情况的数量、以及开关情况取值的稀疏程度来决定如何翻译开关语句：当开关情况数量比较多（例如 4 个以上）、且取值范围跨度较小时，就会使用跳转表。</p>
+<h3 id="5-1-示例代码"><a href="#5-1-示例代码" class="headerlink" title="5.1 示例代码"></a>5.1 示例代码</h3><p>图 3-22a 是一个 C 语言 <code>switch</code> 语句的示例。这个例子有一些非常有意思的特征：情况标号（case label）覆盖了一个不连续的区域（例如情况 101 和 105 都没有对应的标号）；有些情况拥有多个标号（如情况 104 和 106）；还有些情况会落入其他情况之中（如情况 102），因为它的代码段没有以 <code>break</code> 语句结尾。</p>
+<p>图 3-23 是编译 <code>switch_eg</code> 时产生的汇编代码，用 C 语言描述这段代码的行为，就得到图 3-22b 中的过程 <code>switch_eg_impl</code>。这段 C 代码使用了 GCC 对跳转表提供的支持，这是对 C 语言的一种扩展：数组 <code>jt</code> 包含 7 个表项，每个表项都是一个代码块的地址。这些位置由代码中的标号定义——在 <code>jt</code> 的表项里用代码指针指明，即由标号再加上 <code>&amp;&amp;</code> 前缀组成（为了实现这个扩展，GCC 的作者们创造了 <code>&amp;&amp;</code> 运算符，它用于生成一个指向代码位置的指针）。</p>
+<p>下面是 <code>switch_eg</code> 的 C 代码（对应原书图 3-22a），以及用跳转表改写后的 <code>switch_eg_impl</code>（对应图 3-22b）：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">switch_eg</span><span class="params">(<span class="type">long</span> x, <span class="type">long</span> n, <span class="type">long</span> *dest)</span></span><br><span class="line">{</span><br><span class="line">    <span class="type">long</span> val = x;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">switch</span> (n) {</span><br><span class="line">        <span class="keyword">case</span> <span class="number">100</span>:               <span class="comment">/* Case 100 */</span></span><br><span class="line">            val *= <span class="number">13</span>;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">case</span> <span class="number">102</span>:               <span class="comment">/* Case 102 */</span></span><br><span class="line">            val += <span class="number">10</span>;          <span class="comment">/* 落入 case 103 */</span></span><br><span class="line">        <span class="keyword">case</span> <span class="number">103</span>:               <span class="comment">/* Case 103 */</span></span><br><span class="line">            val += <span class="number">11</span>;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">case</span> <span class="number">104</span>:               <span class="comment">/* Case 104 */</span></span><br><span class="line">        <span class="keyword">case</span> <span class="number">106</span>:               <span class="comment">/* Case 106 */</span></span><br><span class="line">            val *= val;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">default</span>:</span><br><span class="line">            val = <span class="number">0</span>;</span><br><span class="line">    }</span><br><span class="line">    *dest = val;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">switch_eg_impl</span><span class="params">(<span class="type">long</span> x, <span class="type">long</span> n, <span class="type">long</span> *dest)</span></span><br><span class="line">{</span><br><span class="line">    <span class="comment">/* 跳转表：表项为指向各代码块的指针 */</span></span><br><span class="line">    <span class="type">static</span> <span class="type">void</span> *jt[<span class="number">7</span>] = {</span><br><span class="line">        &amp;&amp;loc_A, &amp;&amp;loc_def, &amp;&amp;loc_B, &amp;&amp;loc_C,</span><br><span class="line">        &amp;&amp;loc_D, &amp;&amp;loc_def, &amp;&amp;loc_D</span><br><span class="line">    };</span><br><span class="line"></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> index = n - <span class="number">100</span>;</span><br><span class="line">    <span class="type">long</span> val = x;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (index &gt; <span class="number">6</span>)</span><br><span class="line">        <span class="keyword">goto</span> loc_def;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 多重分支 */</span></span><br><span class="line">    <span class="keyword">goto</span> *jt[index];</span><br><span class="line"></span><br><span class="line">loc_A:                          <span class="comment">/* Case 100 */</span></span><br><span class="line">    val *= <span class="number">13</span>;</span><br><span class="line">    <span class="keyword">goto</span> done;</span><br><span class="line"></span><br><span class="line">loc_B:                          <span class="comment">/* Case 102 */</span></span><br><span class="line">    val += <span class="number">10</span>;                  <span class="comment">/* 落入 loc_C */</span></span><br><span class="line">loc_C:                          <span class="comment">/* Case 103 */</span></span><br><span class="line">    val += <span class="number">11</span>;</span><br><span class="line">    <span class="keyword">goto</span> done;</span><br><span class="line"></span><br><span class="line">loc_D:                          <span class="comment">/* Cases 104、106 */</span></span><br><span class="line">    val *= val;</span><br><span class="line">    <span class="keyword">goto</span> done;</span><br><span class="line"></span><br><span class="line">loc_def:                        <span class="comment">/* 默认分支 */</span></span><br><span class="line">    val = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">done:</span><br><span class="line">    *dest = val;</span><br><span class="line">}</span><br></pre></td></tr></table></figure>
+
+<p>原始 C 代码为值 100、102–104 和 106 提供了对应的 <code>case</code>，但开关变量 <code>n</code> 本身可以是任意整数。编译器先把 <code>n</code> 减去 100，把取值范围移到 0 到 6 之间，并创建一个新的程序变量（在我们的 C 版本中称为 <code>index</code>）。利用「补码表示的负数会映射成无符号表示的大正数」这一事实，把 <code>index</code> 当作无符号值看待，可以进一步简化分支判断：只需测试 <code>index</code> 是否大于 6，就能判定它是否落在 <mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="1.131ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 500 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="0\sim6"><g data-mml-node="mn" data-latex="0"><path data-c="30" d="M249-22C390-22 460 92 460 320C460 473 428 575 365 625C330 652 291 666 250 666C109 666 39 551 39 320C39 136 88-22 249-22M361 524C368 489 371 425 371 332C371 240 367 172 360 128C347 48 310 8 249 8C226 8 203 17 182 34C155 57 139 104 132 176C129 201 128 253 128 332C128 419 131 480 136 513C145 568 163 603 191 618C213 630 232 636 249 636C314 636 350 583 361 524Z"></path></g></g></g></svg><mjx-break size="4"> </mjx-break><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="3.509ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 1550.8 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="0\sim6"><g data-mml-node="mo" data-latex="\sim"><path data-c="223C" d="M597 143C674 166 714 235 717 350C717 361 712 366 701 366C691 366 686 361 685 351C684 308 675 275 657 251C637 224 592 194 548 194C518 194 486 207 453 233C434 248 418 261 406 271C335 333 274 364 222 364C207 364 192 362 177 357C92 332 59 262 56 150C56 139 61 134 72 134C82 134 87 139 88 149C89 192 98 225 116 249C135 275 182 306 225 306C255 306 287 293 320 267C339 252 355 239 367 229C438 167 499 136 551 136C566 136 582 138 597 143Z"></path></g><g data-mml-node="mn" data-latex="6" transform="translate(1050.8,0)"><path data-c="36" d="M383 504C416 504 432 521 432 555C432 627 378 666 304 666C221 666 155 627 106 548C63 480 42 403 42 316C42 189 65 100 112 47C152 1 198-22 251-22C312-22 362 1 401 47C438 91 457 144 457 205C457 266 439 318 403 361C365 407 316 431 257 431C205 431 165 402 138 346L138 352C138 465 166 561 226 605C252 624 279 633 306 633C342 633 368 623 385 602C351 602 334 583 334 553C334 525 355 504 383 504M344 340C355 317 361 272 361 206C361 141 356 98 345 76C325 35 294 14 251 14C222 14 200 24 184 44C171 60 162 74 158 85C146 116 140 163 140 227C140 255 144 282 151 308C164 355 201 399 256 399C295 399 325 379 344 340Z"></path></g></g></g></svg></mjx-container> 的范围之外。</p>
+<p>在 C 和汇编代码中，根据 <code>index</code> 的值，共有五个不同的跳转位置：<code>loc_A</code>（在汇编代码中标识为 <code>.L3</code>）、<code>loc_B</code>（<code>.L5</code>）、<code>loc_C</code>（<code>.L6</code>）、<code>loc_D</code>（<code>.L7</code>）以及 <code>loc_def</code>（<code>.L8</code>），其中最后一个就是默认分支的目的地址。每个标号都标识着一个实现某种情况处理的代码块。在 C 和汇编两种代码中，程序都会把 <code>index</code> 与 6 比较，若大于 6 就跳转到默认代码处。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"># x in %rdi, n in %rsi, dest in %rdx</span><br><span class="line">switch_eg:</span><br><span class="line">    subq    $100, %rsi            # index = n - 100</span><br><span class="line">    cmpq    $6, %rsi              # 比较 index 与 6</span><br><span class="line">    ja      .L8                   # 若 index &gt; 6（无符号），跳转到默认分支</span><br><span class="line">    jmp     *.L4(,%rsi,8)         # 间接跳转：跳到 jt[index]</span><br><span class="line">.L3:                              # loc_A：Case 100</span><br><span class="line">    leaq    (%rdi,%rdi,2), %rax   # rax = 3x</span><br><span class="line">    leaq    (%rdi,%rax,4), %rdi   # rdi = x + 4 * rax = 13x</span><br><span class="line">    jmp     .L2                   # 跳到 done</span><br><span class="line">.L5:                              # loc_B：Case 102</span><br><span class="line">    addq    $10, %rdi             # val += 10</span><br><span class="line">.L6:                              # loc_C：Case 103</span><br><span class="line">    addq    $11, %rdi             # val += 11</span><br><span class="line">    jmp     .L2                   # 跳到 done</span><br><span class="line">.L7:                              # loc_D：Cases 104、106</span><br><span class="line">    imulq   %rdi, %rdi            # val *= val</span><br><span class="line">    jmp     .L2                   # 跳到 done</span><br><span class="line">.L8:                              # loc_def：默认分支</span><br><span class="line">    movl    $0, %edi              # val = 0</span><br><span class="line">.L2:                              # done：</span><br><span class="line">    movq    %rdi, (%rdx)          # *dest = val</span><br><span class="line">    ret</span><br></pre></td></tr></table></figure>
+
+<p>执行 <code>switch</code> 语句的关键步骤，是通过跳转表访问代码位置。在 C 代码中，这对应一条引用了跳转表 <code>jt</code> 的 <code>goto</code> 语句；而在我们的汇编代码版本里，对应操作是一条 <code>jmp</code> 指令，其操作数带有前缀 <code>*</code>，表明这是一个<strong>间接跳转</strong>——操作数指定一个内存位置，该位置的索引由寄存器 <code>%rsi</code> 给出，而 <code>%rsi</code> 中保存的正是 <code>index</code> 的值。</p>
+<p>C 代码把跳转表声明为一个包含 7 个元素的数组，每个元素都是指向某个代码位置的指针。这些元素覆盖 <code>index</code> 的取值 <mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="1.131ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 500 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="0\sim6"><g data-mml-node="mn" data-latex="0"><path data-c="30" d="M249-22C390-22 460 92 460 320C460 473 428 575 365 625C330 652 291 666 250 666C109 666 39 551 39 320C39 136 88-22 249-22M361 524C368 489 371 425 371 332C371 240 367 172 360 128C347 48 310 8 249 8C226 8 203 17 182 34C155 57 139 104 132 176C129 201 128 253 128 332C128 419 131 480 136 513C145 568 163 603 191 618C213 630 232 636 249 636C314 636 350 583 361 524Z"></path></g></g></g></svg><mjx-break size="4"> </mjx-break><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="3.509ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 1550.8 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="0\sim6"><g data-mml-node="mo" data-latex="\sim"><path data-c="223C" d="M597 143C674 166 714 235 717 350C717 361 712 366 701 366C691 366 686 361 685 351C684 308 675 275 657 251C637 224 592 194 548 194C518 194 486 207 453 233C434 248 418 261 406 271C335 333 274 364 222 364C207 364 192 362 177 357C92 332 59 262 56 150C56 139 61 134 72 134C82 134 87 139 88 149C89 192 98 225 116 249C135 275 182 306 225 306C255 306 287 293 320 267C339 252 355 239 367 229C438 167 499 136 551 136C566 136 582 138 597 143Z"></path></g><g data-mml-node="mn" data-latex="6" transform="translate(1050.8,0)"><path data-c="36" d="M383 504C416 504 432 521 432 555C432 627 378 666 304 666C221 666 155 627 106 548C63 480 42 403 42 316C42 189 65 100 112 47C152 1 198-22 251-22C312-22 362 1 401 47C438 91 457 144 457 205C457 266 439 318 403 361C365 407 316 431 257 431C205 431 165 402 138 346L138 352C138 465 166 561 226 605C252 624 279 633 306 633C342 633 368 623 385 602C351 602 334 583 334 553C334 525 355 504 383 504M344 340C355 317 361 272 361 206C361 141 356 98 345 76C325 35 294 14 251 14C222 14 200 24 184 44C171 60 162 74 158 85C146 116 140 163 140 227C140 255 144 282 151 308C164 355 201 399 256 399C295 399 325 379 344 340Z"></path></g></g></g></svg></mjx-container>，对应着 <code>n</code> 的取值 <mjx-container class="MathJax" jax="SVG" overflow="overflow"><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="3.394ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 1500 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="100\sim106"><g data-mml-node="mn" data-latex="100"><path data-c="31" d="M269 666C228 624 168 603 89 603L89 564C141 564 184 572 217 588L217 82C217 64 213 52 204 47C195 42 170 39 130 39L95 39L95 0C120 2 174 3 257 3C340 3 394 2 419 0L419 39L384 39C343 39 318 42 310 47C302 52 297 64 297 82L297 636C297 660 295 666 269 666Z"></path><path data-c="30" d="M249-22C390-22 460 92 460 320C460 473 428 575 365 625C330 652 291 666 250 666C109 666 39 551 39 320C39 136 88-22 249-22M361 524C368 489 371 425 371 332C371 240 367 172 360 128C347 48 310 8 249 8C226 8 203 17 182 34C155 57 139 104 132 176C129 201 128 253 128 332C128 419 131 480 136 513C145 568 163 603 191 618C213 630 232 636 249 636C314 636 350 583 361 524Z" transform="translate(500,0)"></path><path data-c="30" d="M249-22C390-22 460 92 460 320C460 473 428 575 365 625C330 652 291 666 250 666C109 666 39 551 39 320C39 136 88-22 249-22M361 524C368 489 371 425 371 332C371 240 367 172 360 128C347 48 310 8 249 8C226 8 203 17 182 34C155 57 139 104 132 176C129 201 128 253 128 332C128 419 131 480 136 513C145 568 163 603 191 618C213 630 232 636 249 636C314 636 350 583 361 524Z" transform="translate(1000,0)"></path></g></g></g></svg><mjx-break size="4"> </mjx-break><svg style="vertical-align: -0.566ex;" xmlns="http://www.w3.org/2000/svg" width="5.771ex" height="2.262ex" role="img" focusable="false" viewBox="0 -750 2550.8 1000"><g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)"><g data-mml-node="math" data-latex="100\sim106"><g data-mml-node="mo" data-latex="\sim"><path data-c="223C" d="M597 143C674 166 714 235 717 350C717 361 712 366 701 366C691 366 686 361 685 351C684 308 675 275 657 251C637 224 592 194 548 194C518 194 486 207 453 233C434 248 418 261 406 271C335 333 274 364 222 364C207 364 192 362 177 357C92 332 59 262 56 150C56 139 61 134 72 134C82 134 87 139 88 149C89 192 98 225 116 249C135 275 182 306 225 306C255 306 287 293 320 267C339 252 355 239 367 229C438 167 499 136 551 136C566 136 582 138 597 143Z"></path></g><g data-mml-node="mn" data-latex="106" transform="translate(1050.8,0)"><path data-c="31" d="M269 666C228 624 168 603 89 603L89 564C141 564 184 572 217 588L217 82C217 64 213 52 204 47C195 42 170 39 130 39L95 39L95 0C120 2 174 3 257 3C340 3 394 2 419 0L419 39L384 39C343 39 318 42 310 47C302 52 297 64 297 82L297 636C297 660 295 666 269 666Z"></path><path data-c="30" d="M249-22C390-22 460 92 460 320C460 473 428 575 365 625C330 652 291 666 250 666C109 666 39 551 39 320C39 136 88-22 249-22M361 524C368 489 371 425 371 332C371 240 367 172 360 128C347 48 310 8 249 8C226 8 203 17 182 34C155 57 139 104 132 176C129 201 128 253 128 332C128 419 131 480 136 513C145 568 163 603 191 618C213 630 232 636 249 636C314 636 350 583 361 524Z" transform="translate(500,0)"></path><path data-c="36" d="M383 504C416 504 432 521 432 555C432 627 378 666 304 666C221 666 155 627 106 548C63 480 42 403 42 316C42 189 65 100 112 47C152 1 198-22 251-22C312-22 362 1 401 47C438 91 457 144 457 205C457 266 439 318 403 361C365 407 316 431 257 431C205 431 165 402 138 346L138 352C138 465 166 561 226 605C252 624 279 633 306 633C342 633 368 623 385 602C351 602 334 583 334 553C334 525 355 504 383 504M344 340C355 317 361 272 361 206C361 141 356 98 345 76C325 35 294 14 251 14C222 14 200 24 184 44C171 60 162 74 158 85C146 116 140 163 140 227C140 255 144 282 151 308C164 355 201 399 256 399C295 399 325 379 344 340Z" transform="translate(1000,0)"></path></g></g></g></svg></mjx-container>。可以看到，跳转表对重复情况的处理很简单：对表项 4 和 6 使用相同的代码标号（<code>loc_D</code>）；而对缺失情况的处理，则是对表项 1 和 5 使用默认情况的标号（<code>loc_def</code>）。</p>
+<p>在汇编代码中，跳转表用下面的声明来表示（我们为它添加了一些注释）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">    .section .rodata</span><br><span class="line">    .align   8</span><br><span class="line">.L4:</span><br><span class="line">    .quad    .L3    # index 0：Case 100（loc_A）</span><br><span class="line">    .quad    .L8    # index 1：默认分支（loc_def）</span><br><span class="line">    .quad    .L5    # index 2：Case 102（loc_B）</span><br><span class="line">    .quad    .L6    # index 3：Case 103（loc_C）</span><br><span class="line">    .quad    .L7    # index 4：Cases 104、106（loc_D）</span><br><span class="line">    .quad    .L8    # index 5：默认分支（loc_def）</span><br><span class="line">    .quad    .L7    # index 6：Cases 104、106（loc_D）</span><br></pre></td></tr></table></figure>
+
+<p>这些声明表明：在名为 <code>.rodata</code>（只读数据，Read-Only Data）的目标代码段中，应存放一组 7 个「四字」（每个 8 字节），其中每个字的值都是与指定汇编代码标号（例如 <code>.L3</code>）相关联的指令地址。标号 <code>.L4</code> 标记出这段分配的起始地址，与该标号相对应的地址将作为 <code>switch_eg</code> 中间接跳转的基地址。</p>
+<p>仔细研究所有这些代码需要花费不少功夫，但关键在于领会：使用跳转表是实现多重分支的一种非常高效的方法。在我们的例子里，程序只需一次跳转表引用，就能分支到 5 个不同的位置；即便 <code>switch</code> 语句有上百种情况，也只需要一次跳转表访问即可处理。</p>
+<hr>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://goclub.space/docs/resources/pdf-books/csapp-3e/">深入理解计算机系统（原书第3版） | GoClub</a></li>
+</ul>
+</p></div><div class="post-footer"><div class="tip">本文为原创，转载请注明出处<br>作者: littlefish04</div><div class="meta"><div class="info"><i class="fa fa-sun-o"></i><span class="date">2026-09-04</span><a class="tag" href="/blog/categories/CSAPP-学习/" title="CSAPP 学习">CSAPP 学习 </a><i class="fa fa-tag"></i><a class="tag" href="/blog/tags/计算机系统基础/" title="计算机系统基础">计算机系统基础 </a><span>大约14629个字, 48分钟45秒读完</span></div></div></div></div><div class="share"><div class="share-btn linkonly"><a class="fa fa-link" onclick="Utils.copyToClipboard(window.location.href)" ref="sidebar"></a></div><div class="share-btn evernote"><a class="fa fa-share" onclick="Anatolo.share.native()" ref="sidebar"></a></div><div class="share-btn weibo"><a class="fab fa-weibo" href="javascript:void((function(s,d,e){try{}catch(e){}var f=' rel="external nofollow noreferrer"http://service.weibo.com/share/share.php?',u=d.location.href,p=['url=',e(u),'&amp;title=',e(d.title),'&amp;appkey=2924220432'].join('');function a(){if(!window.open([f,p].join(''),'mb',['toolbar=0,status=0,resizable=1,width=620,height=450,left=',(s.width-620)/2,',top=',(s.height-450)/2].join('')))u.href=[f,p].join('');};if(/Firefox/.test(navigator.userAgent)){setTimeout(a,0)}else{a()}})(screen,document,encodeURIComponent));"></a></div><div class="share-btn twitter"><a class="fab fa-twitter" target="_blank" rel="noopener external nofollow noreferrer" href="http://twitter.com/intent/tweet?text=%E5%88%86%E4%BA%AB%E6%96%87%E7%AB%A0%EF%BC%9A%0A%0Alittlefish04%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2%20%C2%B7%20%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA%EF%BC%88%E4%BA%8C%EF%BC%89%0Ahttps://littlefish04.github.io/blog/posts/3259834475/%0A"></a></div><div class="share-btn mastodon"><a class="fab fa-mastodon" target="_blank" rel="noopener external nofollow noreferrer" href="https://mastodonshare.com/?text=%E5%88%86%E4%BA%AB%E6%96%87%E7%AB%A0%EF%BC%9A%0A%0Alittlefish04%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2%20%C2%B7%20%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA%EF%BC%88%E4%BA%8C%EF%BC%89%0Ahttps://littlefish04.github.io/blog/posts/3259834475/%0A"></a></div></div><div class="pagination"><ul class="clearfix"><li class="pre pagbuttons"><a class="btn" role="navigation" href="/blog/posts/4066102451/">上一篇：程序的机器级表示（一）</a></li></ul></div><script>Anatolo.comment.setConfig({"valine":{"enable":false,"appid":null,"appkey":null,"notify":false,"verify":false,"avatar":"mm","placeholder":"hello, world"},"gitment":{"enable":false,"owner":"littlefish04","repo":"Gitment-repo","client_id":"Ov23liQvODT8ulenZPgL","client_secret":"a89a59e18c2b4bc891a5e47b3d876870f5c6dd7a"},"gitalk":{"enable":true,"owner":"littlefish04","repo":"Gitment-repo","client_id":"Ov23liQvODT8ulenZPgL","client_secret":"a89a59e18c2b4bc891a5e47b3d876870f5c6dd7a"},"duoshuo":null,"disqus":null,"gentie":null})</script><a id="comments"></a><div id="gitalk_container" style="padding: 10px"></div></div></div></div></div></main-outlet><script>(async function(){ if (Anatolo.search == null) await Anatolo.getMsg("search-init"); Anatolo.search.config = {translation:{posts:"文章",pages:"页面",categories:"分类",tags:"标签",untitled:"(无标题)",} }; })()</script><div class="searchbox ins-search modal-cover"><div class="searchbox-container ins-search-container modal-container"><div class="searchbox-input-wrapper"><input class="searchbox-input ins-search-input" type="text" placeholder="想要查找什么..."><span class="searchbox-close"><a class="fa fa-times-circle" onclick="Anatolo.search.closeWindow();"></a></span></div><div class="searchbox-result-wrapper ins-section-wrapper"><div class="ins-section-container"><p>Seraching...</p></div></div></div></div><button class="float-button hide" id="scroll-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" type="button" title="回到顶部"><i class="fa fa-angle-up"></i></button><div class="modal-cover" id="success-indicator"><div class="modal-container indicator"><i class="fa fa-check"></i></div></div></body></html>
