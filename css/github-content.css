@@ -333,6 +333,7 @@ html[theme='dark'] .post-page .post .post-content {
 .post-page .post .post-content figure.highlight pre .regexp,
 .post-page .post .post-content figure.highlight pre .haskell .type,
 .post-page .post .post-content figure.highlight pre .preprocessor,
+.post-page .post .post-content figure.highlight pre .meta,
 .post-page .post .post-content figure.highlight pre .ruby .class .parent,
 .post-page .post .post-content figure.highlight pre .built_in,
 .post-page .post .post-content figure.highlight pre .sql .aggregate,
