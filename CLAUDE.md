@@ -57,6 +57,16 @@ description: 文章摘要，用于 SEO
 | hexo-renderer-marked | Markdown 渲染（支持 postAsset） |
 | hexo-filter-mathjax | 数学公式渲染（注入 MathJax CDN） |
 
+## 代码高亮
+
+- highlight.js v11 默认只注册常用语言（common bundle），**不含任何汇编语言**；`scripts/register-asm-language.js` 在 Hexo 启动时向共用的 hljs 模块实例补注册 `x86asm`（别名 `asm`/`assembly`/`x86`/`nasm`/`masm`）及 `armasm`/`avrasm`/`mipsasm`
+- 新增语言支持：在该脚本里追加 `hljs.registerLanguage`，**勿改 node_modules**（重装即丢）
+- 代码块正文配色（Typora GitHub 同款调色板，CSS 变量 `--gh-hl-*`）：`themes/Anatolo/source/css/github-content.css`；汇编 `meta`（`section`/`global` 等伪指令）与 `.preprocessor` 同组蓝色
+- 代码块右上角语言标签：`themes/Anatolo/src/scss/highlight.scss` 里按 figure class 用 `.code:after content` 定义（如 `&.asm/&.assembly/&.nasm → 'x86 Assembly'`）；新语言要在 `hljs.registerLanguage` 之外**同步补这里**，改后 `hexo generate` 会自动重编 bundle.css
+- ⚠️ 主题构建（`themes/Anatolo/includes/tasks/rollup.js`）已改为 node 直调本地 rollup，不再经 pnpm——本地 pnpm 11 在受限环境下报 `unable to open database file` 会拖垮整个 generate（模板 TypeError 连锁失败）
+- ⚠️ 改 `scripts/` 或渲染逻辑后，旧文章不会因增量 generate 重渲染，需 `hexo clean` 后再 generate 才全量生效
+- ⚠️ `hexo server` 运行期间会锁住 `themes/Anatolo/source/` 下的文件（无 FILE_SHARE_DELETE），AI 用 ReplaceFileW 式编辑会报 `Win32 32` 共享冲突，改文件前先让用户停掉 server
+
 ## SEO 配置
 
 - sitemap 路径：`sitemap.xml`、`sitemap-articles.xml`

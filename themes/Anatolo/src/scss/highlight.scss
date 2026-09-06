@@ -1190,7 +1190,12 @@ figure.highlight {
     @include mixcontent('X++');
   }
 
-  &.x86asm {
+  &.x86asm,
+  &.asm,
+  &.assembly,
+  &.nasm,
+  &.masm,
+  &.x86 {
     @include mixcontent('x86 Assembly');
   }
 
