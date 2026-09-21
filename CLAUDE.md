@@ -55,7 +55,7 @@ description: 文章摘要，用于 SEO
 | hexo-generator-robotstxt | 生成 robots.txt |
 | hexo-filter-nofollow | 外链添加 nofollow |
 | hexo-renderer-marked | Markdown 渲染（支持 postAsset） |
-| hexo-filter-mathjax | 数学公式渲染（注入 MathJax CDN） |
+| hexo-filter-mathjax | 数学公式渲染（构建期 TeX → 内联 SVG，无前端 CDN） |
 
 ## 代码高亮
 
@@ -66,6 +66,13 @@ description: 文章摘要，用于 SEO
 - ⚠️ 主题构建（`themes/Anatolo/includes/tasks/rollup.js`）已改为 node 直调本地 rollup，不再经 pnpm——本地 pnpm 11 在受限环境下报 `unable to open database file` 会拖垮整个 generate（模板 TypeError 连锁失败）
 - ⚠️ 改 `scripts/` 或渲染逻辑后，旧文章不会因增量 generate 重渲染，需 `hexo clean` 后再 generate 才全量生效
 - ⚠️ `hexo server` 运行期间会锁住 `themes/Anatolo/source/` 下的文件（无 FILE_SHARE_DELETE），AI 用 ReplaceFileW 式编辑会报 `Win32 32` 共享冲突，改文件前先让用户停掉 server
+
+## 数学公式（MathJax）
+
+- 渲染链路：`hexo-renderer-marked` 先产出 HTML → `hexo-filter-mathjax` 在 `after_post_render` 阶段把 `$...$` / `$$...$$` 就地转成内联 SVG（**构建期渲染**，前端不加载 MathJax CDN，CLAUDE 旧描述有误）
+- **⚠️ 必坑**：`$$...$$` 块**内部不能有空行**。Markdown 阶段空行会被当作段落分隔，把公式块拆成多个 `<p>`（`<p>$$\begin{aligned}</p>` … `<p>\end{aligned}$$</p>`），MathJax 找不到成对的 `$$` 于是原样输出原始文本。Typora 自己的解析器容忍空行，所以本地预览正常、上线才露馅，极难排查
+- 多行环境的换行用 `\cr` 而非 `\\`（marked 会把 `\\` 转义成单个 `\`）
+- **排查手段**：`grep 'begin{aligned}' public/posts/<abbrlink>/index.html` —— 命中 `<p>$$…` 即被段落拆了；正常应是 `<mjx-container … display="true">` + `data-mml-node="mtable"`
 
 ## SEO 配置
 
