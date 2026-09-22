@@ -18,6 +18,7 @@ article:
     read: 'read'
     about: 'About'
     words: 'words'
+    updated: 'Última atualização'
 
 time:
     minu: min

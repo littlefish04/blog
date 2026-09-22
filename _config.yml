@@ -88,7 +88,10 @@ meta_generator: true
 date_format: YYYY-MM-DD
 time_format: HH:mm:ss
 ## updated_option supports 'mtime', 'date', 'empty'
-updated_option: 'mtime'
+## 'empty'：只有文章 front matter 里显式写了 updated 才认为有"最后修改时间"
+## （'mtime' 会让每篇文章都带上文件修改时间，CI 上是 checkout 时间，会让
+##   article:modified_time / sitemap lastmod / 页面上的"最后修改于"全部失真）
+updated_option: 'empty'
 
 # Pagination
 ## Set per_page to 0 to disable pagination

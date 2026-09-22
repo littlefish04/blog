@@ -38,8 +38,16 @@ mixin make_post(item, is_detail)
           else if is_current('guestbook')
             span
           else
-            i.fa.fa-sun-o
-            span.date= date(item.date, "YYYY-MM-DD")
+            i.fa.fa-sun
+            if is_detail
+              span.date(title=date(item.date, "YYYY-MM-DD HH:mm:ss"))= date(item.date, "YYYY-MM-DD")
+            else
+              span.date= date(item.date, "YYYY-MM-DD")
+            //- 最后修改时间：仅在文章详情页、且 front matter 显式写了 updated 时显示
+            //- 与发布日期同一天则不显示（避免出现两行一模一样的日期）
+            if is_detail && item.updated && date(item.updated, "YYYY-MM-DD") !== date(item.date, "YYYY-MM-DD")
+              i.fa.fa-pen-to-square
+              span.updated(title=date(item.updated, "YYYY-MM-DD HH:mm:ss"))= __("article.updated") + " " + date(item.updated, "YYYY-MM-DD")
             if item.categories
               each cat in item.categories.sort('posts').data
                 a.tag(href=config.root + cat.path, title=cat.name)= cat.name + " "

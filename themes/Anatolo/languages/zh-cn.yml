@@ -19,6 +19,7 @@ article:
     read: '读完'
     about: '大约'
     words: '个字'
+    updated: '最后修改于'
 
 time:
     minu: 分钟

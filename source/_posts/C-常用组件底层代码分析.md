@@ -9,6 +9,7 @@ description: 剖析 List 和 Dictionary 的底层源码实现，包括扩容机�
 typora-root-url: C-常用组件底层代码分析
 abbrlink: 1942871416
 date: 2026-07-20 15:40:02
+updated: 2026-07-21 23:19:23
 ---
 
 ---

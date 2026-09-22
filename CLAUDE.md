@@ -35,6 +35,7 @@ tags:
 categories: 分类名
 abbrlink: 自动生成  # 由 hexo-abbrlink 插件自动填充
 date: 自动生成       # 由 hexo-auto-front-matter 插件自动填充
+updated: 手动填写    # 可选：最后修改时间，见下
 summary: 文章摘要（用于 SEO 和列表展示）（应在50字以内）
 description: 文章摘要，用于 SEO
 ---
@@ -43,6 +44,8 @@ description: 文章摘要，用于 SEO
 - **Categories**：目前有 `Unity 基础学习`、`建设博客`
 - **Tags**：目前有 `C#基础`、`Hexo`、`Markdown` 
 - **永久链接**格式：`posts/:abbrlink/`（crc32 算法生成数字 ID）
+- **最后修改时间（`updated`）**：`_config.yml` 里 `updated_option: 'empty'`，即**只有 front matter 显式写了 `updated` 才算有最后修改时间**。主题只在**文章详情页**的 meta 行显示（`2026-09-21 ✎ 最后修改于 2026-09-22`），首页/归档/分类等列表页永远只显示 `date`；两者**同一天则不显示**。悬停发布日期/修改日期可看到精确到秒的时间（`title` 属性）
+  - ⚠️ **改了文章内容后要手动把 `updated` 改成当前时间**，否则页面上的修改时间不会变。回填历史文章可用 `git log -1 --format=%ad --date=format:'%Y-%m-%d %H:%M:%S' -- <文件>` 取最后提交时间（只提交过一次的文章不建议回填——那是建文时间，不是修改时间）
 - **⚠️ 必坑**：Front Matter **必须显式写 `abbrlink`**（如 `abbrlink: 4223884717`）。若缺省，hexo-abbrlink 会在 `before_post_render` 阶段才回填，而渲染器此时从模型克隆出的 Post 副本没有 abbrlink，图片 src 会变成 `/blog/posts/undefined/xxx.png`（部署后图片全挂，但文章 URL 和资源文件路径却正常，极难排查）。修复方法：用 `hexo generate` 输出的 `Generate link [xxx]` 或插件回填值补进 Front Matter 后重新构建
 
 ## 关键插件

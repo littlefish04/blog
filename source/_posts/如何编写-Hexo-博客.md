@@ -1,6 +1,7 @@
 ---
 title: 如何编写 Hexo 博客
 date: 2026-07-18 10:38:43
+updated: 2026-07-19 20:01:10
 tags:
   - Markdown
   - Hexo
