@@ -1,18 +1,23 @@
 ---
 title: OpenGL 入门学习（三）
 tags:
-  - 计算机系统基础
-categories: CSAPP 学习
+  - 图形学基础
+  - OpenGL
+categories: OpenGL 学习
 toc: true
-date: 2026-09-26 09:07:13
-summary:
-description:
+abbrlink: 3251596290
+date: 2026-09-26 23:02:18
+summary: 把着色器源码搬进文件，用索引缓冲区画正方形，再实现一套能自动定位出错的 OpenGL 错误处理机制。
+description: >-
+  承接上篇手写着色器字符串的做法，本文先把顶点着色器与片段着色器源码放进 .shader 文件，用 ifstream 与 stringstream 逐行读取并拆分成两段源码，并借助 VS 调试器的工作目录设置解决相对路径的读取问题。接着引入索引缓冲区（Index Buffer），用 4 个顶点配合 6 个索引绘制出正方形，并说明重复顶点在大型模型中对显存的浪费为何不可忽视。最后搭建一套 OpenGL 错误处理机制：从 glGetError 的错误码说起，用 GLClearError 与 GLCheckError 包裹检查流程，再借助 ASSERT 断言和 GLCall 宏在出错时自动中断在出错的调用行，并打印函数名、文件名与行号。
 typora-root-url: OpenGL-入门学习（三）
 typora-copy-images-to: OpenGL-入门学习（三）
 ---
 
 ---
 ## 写在前面
+
+上一篇博客 [OpenGL 入门学习（二）](https://littlefish04.github.io/blog/posts/2362560336/) 中，我们用 GLEW、顶点缓冲区和手写的着色器源码画出了第一个红色三角形，现在我们来把着色器的处理流程和绘制流程整理得更像样一点。
 
 好想学习写一些狂霸酷炫拽的着色器啊。。。
 
@@ -24,31 +29,31 @@ typora-copy-images-to: OpenGL-入门学习（三）
 
 ### 1.1 从文件中读取着色器源码
 
-在上一篇博客里我们直接编写字符串作为着色器源码。这样很容易出错，而且修改起来也很不方便。所以我们这次直接在文件里编写着色器源码，再从文件里读取它。
+在上一篇博客里，我们直接把着色器源码写成字符串。这样不仅容易出错，修改起来也很不方便。所以这一次我们把着色器源码写在文件里，再从文件里读取它。
 
 #### 添加文件
 
-在 OpenGL 下新建文件夹 res （表示 resource 资源文件夹），再新建文件夹 shaders，最后新建一个文件 Basic.shader。
+在 OpenGL 项目下新建文件夹 `res`（表示 resource，即资源文件夹），再在其中新建文件夹 `shaders`，最后新建一个文件 `Basic.shader`。
 
-使用新建项创建 .shader 文件的时候注意不要在紧凑视图里直接给文件改名然后添加，会显示没有对应模板然后无法在解决方案资源管理器里看到你创建出来的 .shader 文件。应该先点击显示所有模板，然后随便选一个模板（因为我们会自己更改后缀名，所以这里选什么模板都无所谓），然后再更改名称和添加文件。
+使用「新建项」创建 `.shader` 文件时需要注意：不要在紧凑视图里直接给文件改名然后添加，这样会提示没有对应的模板，创建出来的 `.shader` 文件也无法显示在解决方案资源管理器中。正确的做法是先点击「显示所有模板」，随便选一个模板（因为我们随后会自己更改后缀名，所以选什么模板都无所谓），然后再修改名称并添加文件。
 
-![79038704028](/1790387040284.png)
+![79038704028](1790387040284.png)
 
-![79038722376](/1790387223766.png)
+![79038722376](1790387223766.png)
 
-![79038691354](/1790386913546.png)
+![79038691354](1790386913546.png)
 
 #### 复制粘贴着色器源码
 
-把我们在上一篇博客里编写过的着色器源码复制粘贴到 .shader 文件里。在每个着色器的源码前面加一行 #shader xxxx 来指明这是哪个着色器的源码。
+把我们在上一篇博客里编写过的着色器源码复制粘贴到 `.shader` 文件里，并在每个着色器的源码前面加一行 `#shader xxxx`，指明这段源码属于哪个着色器。
 
-> 善用 ctrl+h（替换字符）来删除源码里的 " 和 \n 符号。
+> 善用 Ctrl+H（替换）来删除源码里多余的 `"` 和 `\n` 符号。
 >
-> 在 visual studio 中一次性选中多行代码块，然后按 tab 键可以增加这些代码的缩进，按 shift+tab 键则可以减少缩进。
+> 在 Visual Studio 中一次性选中多行代码，然后按 Tab 键可以增加这些代码的缩进，按 Shift+Tab 键则可以减少缩进。
 
-现在 Basic.shader 的内容应该是这样：
+现在 `Basic.shader` 的内容应该是这样：
 
-```
+```glsl
 #shader vertex
 #version 330 core
         
@@ -66,19 +71,19 @@ layout(location = 0) out vec4 color;
         
 void main()
 {
-    color = vec4(1.0, 1.0, 0.0, 1.0);
+    color = vec4(1.0, 0.0, 0.0, 1.0);
 };
 ```
 
 #### 读取源码
 
-现在回到我们的 Application.cpp ，我们需要读取 .shader 文件的内容并把它分成两个字符串。
+现在回到 `Application.cpp`，我们需要读取 `.shader` 文件的内容，并把它分成两个字符串。
 
-我们到文件的开头去声明一个新函数 ParseShader 。别忘了加上 `#include <fstream>` 、`#include <sstream>` 和 `#include <string>`。
+我们到文件的开头去声明一个新函数 `ParseShader`，别忘了加上 `#include <fstream>`、`#include <sstream>` 和 `#include <string>`。
 
-> 使用 ifstream 、stringstream 和 getline 函数来读取文件是 c++ 里非常常见的做法。可以自行去网络上搜索这些函数的具体使用方法，笔者就不在此处详细介绍了。
+> 使用 `ifstream`、`stringstream` 和 `getline` 函数来读取文件是 C++ 里非常常见的做法。可以自行去网络上搜索这些函数的具体使用方法，笔者就不在此处详细介绍了。
 
-```c
+```cpp
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -91,25 +96,25 @@ static void ParseShader(const std::string& filepath) {
     while (std::getline(stream, line)) {
         if (line.find("#shader") != std::string::npos) {
             if (line.find("vertex") != std::string::npos) {
-                // set mode to vertex
+                // 把模式设置为顶点着色器
             }
             else if (line.find("fragment") != std::string::npos) {
-                // set mode to fragment
+                // 把模式设置为片段着色器
             }
         }
     }
 }
 ```
 
-以上就是这个函数的大致框架。其中 stream 和 line 用于逐行读取文件内容，ss 数组用来存放我们读取到的顶点着色器和片段着色器源码。
+以上就是这个函数的大致框架。其中 `stream` 和 `line` 用于逐行读取文件内容，`ss` 数组用来存放我们读取到的顶点着色器和片段着色器源码。
 
-接下来我们来使用一个枚举类 ShaderType 来表示我们正在读取的代码属于哪个着色器源码。我们一行行的读取代码，如果它含有 "#shader"，我们就知道这行代码在指定着色器，于是设置对应的 ShaderType；如果它不含有 "#shader"，就说明这是一行源码，我们就把它加到 ss 里去。ss[0] 里存放的是顶点着色器的源码，ss[1] 里存放的是片段着色器的源码。
+接下来我们用一个枚举类 `ShaderType` 来表示当前正在读取的代码属于哪个着色器：一行行地读取代码，如果这一行含有 `#shader`，就说明这一行在指定接下来的源码属于哪个着色器，于是设置对应的 `ShaderType`；如果它不含有 `#shader`，就说明这是一行源码，我们把它追加到 `ss` 里。`ss[0]` 里存放的是顶点着色器的源码，`ss[1]` 里存放的是片段着色器的源码。
 
-> 这里我们显式的将枚举类里的 VERTEX 和 FRAGMENT 声明为 0 和 1，这样方便我们在后面直接将它们转换成数组索引使用 。 
+> 这里我们显式地把枚举类里的 `VERTEX` 和 `FRAGMENT` 声明为 0 和 1，这样方便我们在后面直接将它们转换成数组索引使用。
 
 到这一步为止，函数的代码是这样的：
 
-```c
+```cpp
 static void ParseShader(const std::string& filepath) {
     std::ifstream stream(filepath);
 
@@ -136,9 +141,9 @@ static void ParseShader(const std::string& filepath) {
 }
 ```
 
-接下来我们要返回读取到的源码，由于我们要返回两个字符串，而返回值只能有一个，所以我们使用结构体来作为返回值。
+接下来我们要返回读取到的源码。由于要返回两个字符串，而返回值只能有一个，所以我们使用结构体来作为返回值。
 
-```c
+```cpp
 struct ShaderProgramSource {
     std::string VertexSource;
     std::string FragmentSource;
@@ -171,53 +176,53 @@ static ShaderProgramSource ParseShader(const std::string& filepath) {
 }
 ```
 
-以上就是读取源码要用到的代码了。
+以上就是读取源码要用到的全部代码了。
 
 #### 使用我们读取的源码
 
-把 Application.cpp 里的这两行给删掉，或者按 ctrl+/ 注释掉，因为我们用不上它们了：
+把 `Application.cpp` 里的这两行删掉，或者按 Ctrl+/ 注释掉，因为我们用不上它们了：
 
-```c
+```cpp
 unsigned int shader = CreateShader(vertexShader, fragmentShader);
 glUseProgram(shader);
 ```
 
-别忘了把我们之前写的 vertexShader 和 fragmentShader 这俩字符串也删了。
+别忘了把我们之前写的 `vertexShader` 和 `fragmentShader` 这两个字符串也一并删掉。
 
 接下来我们使用相对路径来指定要读取的文件：
 
-```c
+```cpp
 ShaderProgramSource source = ParseShader("res/shaders/Basic.shader");
 ```
 
-需要注意的是，如果我们在 VS 以外的地方运行这个代码编译出的可执行文件，相对路径的根目录（也称作工作目录）将会是包含可执行文件的那个目录。但是在 VS 的调试器里运行这个程序的话，工作目录会被设置成 VS 调试器里配置的属性。
+需要注意的是，如果我们在 Visual Studio 以外的地方运行这段代码编译出的可执行文件，相对路径的根目录（也称作工作目录）将会是包含可执行文件的目录。但如果是在 VS 的调试器里运行程序，工作目录会被设置成调试器属性里配置的值。
 
-所以我们先来配置一下这个属性。依旧右键点击 OpenGL 文件夹打开项目的属性：
+所以我们先来配置一下这个属性。依旧是右键点击 OpenGL 项目，打开它的属性：
 
-![79039090351](/1790390903514.png)
+![79039090351](1790390903514.png)
 
-在 配置属性->调试 里找到工作目录这一栏，
+在「配置属性 → 调试」里找到「工作目录」这一栏：
 
-![79039096450](/1790390964506.png)
+![79039096450](1790390964506.png)
 
-我们看到工作目录被默认设置为项目目录，也就是包含 .vcxproj 文件的目录，就是 OpenGL 文件夹。
+可以看到，工作目录被默认设置为项目目录，也就是包含 `.vcxproj` 文件的目录，即 OpenGL 文件夹。
 
-![79039116286](/1790391162861.png)
+![79039116286](1790391162861.png)
 
-所以我们的相对路径是能正确读取到 /res/shaders/Basic.shader 文件的。
+所以我们的相对路径是能正确读取到 `res/shaders/Basic.shader` 文件的。
 
 接着我们把读取到的源码打印出来，方便之后查看读取效果：
 
-```c
+```cpp
 std::cout << "VERTEX" << std::endl;
 std::cout << source.VertexSource << std::endl;
 std::cout << "FRAGMENT" << std::endl;
 std::cout << source.FragmentSource << std::endl;
 ```
 
-现在把编译着色器程序的这两行重新加上，注意把我们原本用的源码字符串换成我们新得到的存放在源码结构体里的字符：
+现在把编译着色器程序的这两行重新加上，注意把我们原本用的源码字符串换成刚从源码结构体里取到的字符串：
 
-```c
+```cpp
 unsigned int shader = CreateShader(source.VertexSource, source.FragmentSource);
 glUseProgram(shader);
 ```
@@ -226,13 +231,13 @@ glUseProgram(shader);
 
 #### 修改着色器源码
 
-现在我们可以很方便的直接在文件里修改着色器源码了。比如说，把片段着色器输出的颜色改一改：
+现在我们可以很方便地直接在文件里修改着色器源码了。比如说，把片段着色器输出的颜色改一改：
 
-```c
+```glsl
 color = vec4(0.2, 0.3, 0.8, 1.0);
 ```
 
-现在再运行程序，就能看到渲染出蓝色的三角形。
+现在再运行程序，就能看到渲染出的蓝色三角形了。
 
 ---
 
@@ -242,11 +247,11 @@ color = vec4(0.2, 0.3, 0.8, 1.0);
 
 #### 第一个实现
 
-现在我们不止想画一个三角形了，我们还想画一个正方形。我们画正方形的方式是画两个拼在一起的三角形。
+现在我们不止想画一个三角形，还想画一个正方形。而画正方形的方式，就是把两个三角形拼在一起。
 
-我们需要修改 positions 数组里的顶点坐标，需要修改创建的顶点缓冲区的大小，还需要修改 glDrawArrays 函数要绘制的顶点的数量。
+我们需要修改 `positions` 数组里的顶点坐标，需要修改创建的顶点缓冲区的大小，还需要修改 `glDrawArrays` 函数要绘制的顶点的数量。
 
-```c
+```cpp
 float positions[] = {
     -0.5f, -0.5f,
      0.5f, -0.5f,
@@ -267,13 +272,13 @@ glDrawArrays(GL_TRIANGLES, 0, 6);
 
 #### 使用索引缓冲区
 
-我们的代码存在一些可以改进的问题。其中一个问题是，我们在 positions 里使用了重复的位置坐标，它们在显存里占据了不必要的空间。实际上我们只需要四个顶点，而不是六个。为了重复使用顶点，我们可以使用**索引缓冲区**（Index Buffer）。
+我们的代码存在一些可以改进的问题。其中一个问题是，我们在 `positions` 里使用了重复的位置坐标，它们在显存里占据了不必要的空间。实际上我们只需要四个顶点，而不是六个。为了重复使用顶点，我们可以使用**索引缓冲区**（Index Buffer）。
 
-我们先把 positions 数组删到只留下我们要用的四个顶点的坐标。然后我们创建一个无符号整形数组，这就是我们的索引缓冲区。在里面放六个索引，每个索引对应 positions 里我们要使用的一个顶点，和之前一样，按照绘制两个三角形的顺序排列好这些索引。
+我们先把 `positions` 数组删到只留下我们要用的四个顶点的坐标，然后创建一个无符号整型数组，这就是我们的索引缓冲区。在里面放六个索引，每个索引对应 `positions` 里我们要使用的一个顶点。和之前一样，按照绘制两个三角形的顺序排列好这些索引。
 
-> indices 也可以声明为 unsigned short[] 或者 unsigned char[]，这样能更节省内存，不过能表示的索引数目也会更少。我们这里为了方便以后修改使用就直接声明为 unsigned int[] 了。
+> `indices` 也可以声明为 `unsigned short[]` 或者 `unsigned char[]`，这样能更节省内存，不过能表示的索引数目也会更少。我们这里为了方便以后修改使用就直接声明为 `unsigned int[]` 了。
 
-```c
+```cpp
 float positions[] = {
     -0.5f, -0.5f,
      0.5f, -0.5f,
@@ -287,9 +292,9 @@ unsigned int indices[] = {
 };
 ```
 
-接下来我们生成一个索引缓冲区对象，和之前生成顶点缓冲区的步骤差不多。我们只需要把之前生成顶点缓冲区的代码复制下来，就粘贴在生成顶点缓冲区的代码的下方，然后再稍作修改。
+接下来我们生成一个索引缓冲区对象，步骤和之前生成顶点缓冲区差不多。我们只需要把之前生成顶点缓冲区的代码复制下来，粘贴在生成顶点缓冲区的代码的下方，然后再稍作修改。
 
-```c
+```cpp
 unsigned int buffer;
 glGenBuffers(1, &buffer);
 glBindBuffer(GL_ARRAY_BUFFER, buffer);
@@ -299,26 +304,26 @@ glBufferData(GL_ARRAY_BUFFER, 4 * 2 * sizeof(float), positions, GL_STATIC_DRAW);
 unsigned int ibo;
 glGenBuffers(1, &ibo);
 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * 2 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
+glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
 ```
 
-注意 GL_ARRAY_BUFFER 要换成 GL_ELEMENT_ARRAY_BUFFER 。
+注意 `GL_ARRAY_BUFFER` 要换成 `GL_ELEMENT_ARRAY_BUFFER`。
 
-最后我们还要把 DrawCall 指令从 glDrawArrays 换成 glDrawElements 。
+最后我们还要把 DrawCall 指令从 `glDrawArrays` 换成 `glDrawElements`。
 
-```c
+```cpp
 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 ```
 
-注意这个函数有四个参数，第一个参数还是和之前一样写 GL_TRIANGLES，第二个参数是要绘制的索引的数量（而不是顶点的数量），第三个参数是索引缓冲区数组的数据类型，第四个参数是指向索引缓冲区的指针，不过因为我们已经绑定好索引缓冲区了，所以我们用不上传入指针，直接传 nullptr 就好。
+注意这个函数有四个参数：第一个参数还是和之前一样写 `GL_TRIANGLES`；第二个参数是要绘制的索引的数量（而不是顶点的数量）；第三个参数是索引缓冲区数组的数据类型；第四个参数是指向索引缓冲区的指针，不过因为我们已经绑定好索引缓冲区了，所以我们用不上传入指针，直接传 `nullptr` 就好。
 
 现在按下 F5 运行，就能看到我们使用索引缓冲区绘制出的正方形了。
 
 ### 2.2 使用索引缓冲区的必要性
 
-在绘制正方形的例子里，你可能会想：嘿，只是多存两个顶点而已，没什么大不了的，为什么要费这个劲去使用索引缓冲区呢？
+在绘制正方形的例子里，你可能会想：不过是多存两个顶点而已，没什么大不了的，为什么要费这个劲去使用索引缓冲区呢？
 
-但是在实际的项目中，一个建模可能由非常非常多的三角形组成，而对每一对三角形的连接处，你都要多使用两个重复的顶点。而且顶点的数据也会比我们现在使用的要大得多，除了位置信息，还可能包含纹理、法线等等属性。这个时候这些相同的顶点所占用的显存就不可忽视了。
+但是在实际的项目中，一个模型可能由非常非常多的三角形组成，而对每一对三角形的连接处，你都要多使用两个重复的顶点。而且顶点的数据也会比我们现在使用的要大得多，除了位置信息，还可能包含纹理坐标、法线等等属性。这个时候这些相同的顶点所占用的显存就不可忽视了。
 
 实际上 99% 以上的时间我们都在使用索引缓冲区，而不是直接用顶点缓冲区。
 
@@ -326,41 +331,41 @@ glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
 ## 三、错误处理
 
-假设我们在上一章使用索引缓冲区的例子中犯了一个错误。我们在调用 glDrawElements 这个函数时，错误地传入了 GL_INT 而不是 GL_UNSIGNED_INT 。
+假设我们在上一章使用索引缓冲区的例子中犯了一个错误。我们在调用 `glDrawElements` 这个函数时，错误地传入了 `GL_INT` 而不是 `GL_UNSIGNED_INT`。
 
-```c
+```cpp
 glDrawElements(GL_TRIANGLES, 6, GL_INT, nullptr);
 ```
 
-那么这时候再按 F5 运行将不会看到任何正方形，只能看到一个黑屏的窗口。糟糕的是，我们完全不知道到底是哪一步出了问题，OpenGL 是如此脆弱，很多步骤稍有不慎都会导致渲染失败，而我们只能看到同样的黑屏。
+那么这时候再按 F5 运行将不会看到任何正方形，只能看到一个黑屏的窗口。糟糕的是，我们完全不知道到底是哪一步出了问题——OpenGL 是如此脆弱，很多步骤稍有不慎都会导致渲染失败，而我们只能看到同样的黑屏。
 
-我们要怎么做才能让 OpenGL 输出我们需要的错误信息，好让我们快速的找到错误出在哪里并修复它们？
+我们要怎么做才能让 OpenGL 输出我们需要的错误信息，好让我们快速地找到错误出在哪里并修复它们？
 
 ### 3.1 glGetError 函数简介
 
-第一种方法是调用 glGetError 函数。基本上，当我们在调用 OpenGL 函数时如果出了什么错误，OpenGL 内部会自动设置一个标志（对应一个整型错误码），然后使用 glGetError 就能让 OpenGL 把那个标志返回给我们。有时候代码可能有不止一个错误，这个时候 glGetError 会从多个错误码里随机挑一个给我们；我们可以通过反复调用 glGetError 来获取全部的错误码。
+第一种方法是调用 `glGetError` 函数。基本上，当我们在调用 OpenGL 函数时如果出了什么错误，OpenGL 内部会自动设置一个标志（对应一个整型错误码），然后使用 `glGetError` 就能让 OpenGL 把那个标志返回给我们。有时候代码可能有不止一个错误，这个时候 `glGetError` 会从多个错误码里随机挑一个给我们；我们可以通过反复调用 `glGetError` 来获取全部的错误码。
 
->  在 OpenGL 4.3 版本加入了一个新的函数 glMessageCallback，它允许你传入一个函数的指针，然后告诉你调用这个函数会导致什么错误。它不仅仅会返回一个错误码，还能给出一些英文的修改建议，这比 glGetError 函数要好使多了。不过这篇博客并不会讨论这个函数，因为它太新了，并不与 OpenGL 的每个版本都兼容。
+> 在 OpenGL 4.3 版本加入了一个新的函数 `glDebugMessageCallback`，它允许你传入一个函数的指针，然后告诉你调用这个函数会导致什么错误。它不仅仅会返回一个错误码，还能给出一些英文的修改建议，这比 `glGetError` 函数要好使多了。不过这篇博客并不会讨论这个函数，因为它太新了，并不与 OpenGL 的每个版本都兼容。
 
-在使用 glGetError 函数的时候，我们应该用循环来保证自己取到了所有的错误码，并且将所有的标志都重置。如果不这么做的话，可能在你某次调用函数以后使用 glGetError 取出了一个错误码，但你没有意识到的是，这并不是这次调用导致的，而是更久以前发生某次错误后没有及时重置的标志，这会导致你无法正确的处理错误。
+在使用 `glGetError` 函数的时候，我们应该用循环来保证自己取到了所有的错误码、并且将所有的标志都重置。如果不这么做的话，可能在你某次调用函数以后使用 `glGetError` 取出了一个错误码，但你没有意识到的是，这并不是这次调用导致的，而是更久以前发生某次错误后没有及时重置的标志，这会导致你无法正确地处理错误。
 
 ### 3.2 错误处理代码的简单实现
 
-所以如果我们想知道一个函数出了什么错误，我们应该在调用这个函数前先循环调用 glGetError 来确保之前的所有错误都被清理，然后再在调用这个函数之后循环调用 glGetError 把这个函数引起的所有错误码都取出来。
+所以如果我们想知道一个函数出了什么错误，我们应该在调用这个函数前先循环调用 `glGetError` 来确保之前的所有错误都被清理，然后再在调用这个函数之后循环调用 `glGetError` 把这个函数引起的所有错误码都取出来。
 
 #### 清理错误
 
-我们写一个 GLClearError 函数，这个函数将会在我们要调试的那个函数之前被调用，用于清理错误。
+我们写一个 `GLClearError` 函数，这个函数将会在我们要调试的那个函数之前被调用，用于清理错误。
 
-```c
+```cpp
 static void GLClearError() {
     while (glGetError() != GL_NO_ERROR);
 }
 ```
 
-因为 GL_NO_ERROR 这个宏实际上就等于 0，所以你也可以写成
+因为 `GL_NO_ERROR` 这个宏实际上就等于 0，所以你也可以写成
 
-```c
+```cpp
 static void GLClearError() {
     while (glGetError());
 }
@@ -370,9 +375,9 @@ static void GLClearError() {
 
 现在我们还需要一个函数，用来打印函数调用后发生的所有错误。
 
-glGetError 将会返回一个 Glenum 枚举类型对象，它实际上就是个无符号整型。
+`glGetError` 将会返回一个 `GLenum` 枚举类型对象，它实际上就是个无符号整型。
 
-```c
+```cpp
 static void GLCheckError() {
     while (GLenum error = glGetError()) {
         std::cout << "[OpenGL Error] (" << error << ")" << std::endl;
@@ -384,39 +389,39 @@ static void GLCheckError() {
 
 现在我们可以用自己实现的这些错误处理函数来找出代码里的错误了。
 
-找到我们犯了错误的函数，在正确的位置调用错误处理函数：
+找到我们犯了错误的那个函数，在正确的位置调用错误处理函数：
 
-```c
+```cpp
 GLClearError();
 glDrawElements(GL_TRIANGLES, 6, GL_INT, nullptr);
 GLCheckError();
 ```
 
-现在按 F5 运行。我们可以看到打印出的错误码是 1280 。
+现在按 F5 运行。我们可以看到运行窗口的终端上打印出的错误码是 1280。
 
-我们要找到这个错误码对应的错误究竟是什么。打开 glew.h 文件，ctrl+f 打开查找面板，因为错误码在文件里是以四位十六进制书写的，所以我们输入 0x0500，就能查找到错误码的宏定义了。
+我们要找到这个错误码对应的错误究竟是什么。打开 `glew.h` 文件，按 Ctrl+F 打开查找面板，因为错误码在文件里是以四位十六进制书写的，所以我们输入 `0x0500`，就能查找到错误码的宏定义了。
 
-> 在 #include <GL/glew.h> 这一行点击 F12 可以快速跳转到 glew.h 文件。
+> 在 `#include <GL/glew.h>` 这一行点击 F12 可以快速跳转到 `glew.h` 文件。
 
-![79042786295](/1790427862952.png)
+![79042786295](1790427862952.png)
 
-可以看到宏的名字是 GL_INVALID_ENUM ，表示发生的错误是无效枚举。这确实就是我们犯的错误，因为我们在应该传入 GL_UNSIGNED_INT 的地方传入了 GL_INT 。
+可以看到宏的名字是 `GL_INVALID_ENUM`，表示发生的错误是无效枚举。这确实就是我们犯的错误，因为我们在应该传入 `GL_UNSIGNED_INT` 的地方传入了 `GL_INT`。
 
 #### 这个实现的缺陷
 
-虽然我们的错误处理函数确实可以轻松的找到错误，但是这是在我们已经知道错误发生在哪个函数的情况下。假如我们不知道错误具体发生在哪里，为了找出它，我们可能得对每一个函数都进行一遍错误处理流程——也就是在这个函数的前面一行调用 GLClearError ，在它的后面一行调用 GLCheckError。这实在是非常繁琐。
+虽然我们的错误处理函数确实可以轻松地找到错误，但是这是在我们已经知道错误发生在哪个函数的情况下。假如我们不知道错误具体发生在哪里，为了找出它，我们可能得对每一个函数都进行一遍错误处理流程——也就是在这个函数的前面一行调用 `GLClearError`，在它的后面一行调用 `GLCheckError`。这实在是非常繁琐。
 
-而且由于错误发生在 while 循环中，所以错误码会不停的打印在终端上，显示效果并不理想。
+而且由于错误发生在 `while` 循环中，所以错误码会不停地打印在终端上，显示效果并不理想。
 
-我们理想中的错误处理应该不仅仅能返回错误的类型，还能自动的找到错误出现在代码的哪里，并且停在发生错误的地方。这就是我们接下来要实现的内容。
+我们理想中的错误处理应该不仅仅能返回错误的类型，还能自动地找到错误出现在代码的哪里，并且停在发生错误的地方。这就是我们接下来要实现的内容。
 
 ### 3.3 更好的错误处理代码
 
 #### GLLogCall 函数
 
-我们来改造一下 GLCheckError 这个函数，并把它改名为 GLLogCall 。
+我们来改造一下 `GLCheckError` 这个函数，并把它改名为 `GLLogCall`。
 
-```c
+```cpp
 static bool GLLogCall() {
     if (GLenum error = glGetError()) {
         std::cout << "[OpenGL Error] (" << error << ")" << std::endl;
@@ -426,47 +431,47 @@ static bool GLLogCall() {
 }
 ```
 
-现在这个函数将根据 glGetError 是否能取得错误而返回一个布尔值。
+现在这个函数将根据 `glGetError` 是否能取得错误而返回一个布尔值。
 
 #### 断言
 
 为了让代码在遇到错误的时候能立即中断并告知错误发生在哪一行，我们需要用到**断言**（assertion）。我们不会在这里深入讨论断言的使用，只讨论我们将要用到的部分。
 
-```c
+```cpp
 // 这句代码加在 #include 部分的下面
 #define ASSERT(x) if (!(x)) __debugbreak()
 ```
 
 这句代码定义了一个自定义的断言宏，它的作用是：如果 `x` 这个条件不成立（值 = false），就触发一个调试断点。
 
-其中 `__debugbreak` 前面的 `__ ` 表示这是一个依赖于编译器的函数。因为我们使用的 IDE 是 Microsoft Visual Studio ，所以我们用的是 MSVC（微软的 VC 库）特有的函数，它在 clang、gcc 等任何其它编译器中都不起作用。
+其中 `__debugbreak` 前面的 `__` 是 MSVC 内部函数（intrinsic）的命名惯例，表示这是一个依赖于编译器的函数。因为我们使用的 IDE 是 Microsoft Visual Studio，用的是 MSVC（微软的 C++ 编译器），所以可以直接使用它；换到 gcc 等其它编译器上，这个函数并不能通用。
 
-> 为什么 `!(x)` 中的 x 要用括号包裹起来？ 
+> 为什么 `!(x)` 中的 `x` 要用括号包裹起来？
 >
 > - `!(x)` 加括号是为了防止宏参数被替换后，因为运算符优先级导致错误结合。
 > - 宏是文本替换，所以写宏时给参数加括号是最基本的防御措施。
 >
 > 如果写成：
 >
-> ```c
+> ```cpp
 > #define ASSERT(x) if (!x) __debugbreak();
 > ```
 >
 > 然后你这样用：
 >
-> ```c
+> ```cpp
 > ASSERT(a == b);
 > ```
 >
 > 展开后会变成：
 >
-> ```c
+> ```cpp
 > if (!a == b) __debugbreak();
 > ```
 >
 > 因为 `!` 的优先级高于 `==`，它实际被解析为：
 >
-> ```
+> ```cpp
 > if ((!a) == b) __debugbreak();
 > ```
 >
@@ -476,17 +481,17 @@ static bool GLLogCall() {
 
 我们把 `GLCheckError();` 这一行换成下面这个：
 
-```c
+```cpp
 ASSERT(GLLogCall());
 ```
 
-然后按 F5 运行，会看到运行窗口只打印出一行错误码，而且调试器会自动在 ASSERT 这一行打断点并停在这一行。
+然后按 F5 运行，会看到运行窗口只打印出一行错误码，而且调试器会自动在 `ASSERT` 这一行打断点并停在这一行。
 
 不过我们不想再专门写这些函数调用了。让我们用宏来简化一下这个代码。
 
 像下面这样定义一个宏：
 
-```c
+```cpp
 #define GLCall(x) GLClearError();\
     x;\
     ASSERT(GLLogCall())
@@ -494,9 +499,9 @@ ASSERT(GLLogCall());
 
 其中 `\` 的作用是让编译器忽略末尾的换行符，这样我们就能把这个宏分成多行来写了。注意 `\` 后面不要有任何空格、直接接换行，不然的话换行符不会被忽略。
 
-这个宏的作用是当我们写下 `GLCall(x);` 的时候（x 是一个函数调用，比方说 func()），编译器会自动展开成下面这样：
+这个宏的作用是当我们写下 `GLCall(x);` 的时候（`x` 是一个函数调用，比方说 `func()`），编译器会自动展开成下面这样：
 
-```c
+```cpp
 GLClearError();
 func();
 ASSERT(GLLogCall());
@@ -506,33 +511,33 @@ ASSERT(GLLogCall());
 
 现在我们把代码里的函数调用和错误处理改成下面这一行：
 
-```c
+```cpp
 GLCall(glDrawElements(GL_TRIANGLES, 6, GL_INT, nullptr));
 ```
 
 再按 F5 运行，我们不仅能看到错误码，还能看到断点就打在我们调用函数的这一行上，看起来更加清楚了。
 
-![79043150520](/1790431505203.png)
+![79043150520](1790431505203.png)
 
 #### 在终端上打印更多信息
 
 现在我们还希望程序能把一些错误信息打印在终端上，像是断点在哪一行、出现错误的函数名称和文件名称等等。虽然在调试器里，我们可以直接去看断点的位置，不过有时候我们可能会需要在终端上看到这些信息。
 
-我们修改一下 GLLogCall 函数，让它能接收和打印更多参数：
+我们修改一下 `GLLogCall` 函数，让它能接收和打印更多参数：
 
-```c
+```cpp
 static bool GLLogCall(const char* function, const char* file, int line) {
     if (GLenum error = glGetError()) {
-        std::cout << "[OpenGL Error] (" << error << "): " << function << " " << file <<  ":" << line << std::endl;
+        std::cout << "[OpenGL Error] (" << error << "): " << function << " " << file << ":" << line << std::endl;
         return false;
     }
     return true;
 }
 ```
 
-回到我们的宏定义，来给 GLLogCall 函数传入对应的参数。可以用宏 `__FILE__` 和 `__LINE__` 指出我们调用这个函数的文件和行，和 `__debugbreak` 不同，这些宏应该被所有编译器所支持。在 x 前面加上 # 可以把这个函数调用 x 转换成一个字符串。
+回到我们的宏定义，来给 `GLLogCall` 函数传入对应的参数。可以用宏 `__FILE__` 和 `__LINE__` 指出我们调用这个函数的文件和行，和 `__debugbreak` 不同，这些宏应该被所有编译器所支持。在 `x` 前面加上 `#` 可以把这个函数调用 `x` 转换成一个字符串。
 
-```c
+```cpp
 #define GLCall(x) GLClearError();\
     x;\
     ASSERT(GLLogCall(#x, __FILE__, __LINE__))
@@ -540,15 +545,14 @@ static bool GLLogCall(const char* function, const char* file, int line) {
 
 现在再按 F5 运行，就能看到运行窗口的终端上打印出对应的信息了。
 
-![79043225214](/1790432252146.png)
+![79043225214](1790432252146.png)
 
 > 为了不在终端上显示太多垃圾信息，我把打印着色器源码的那几行删掉了。
 
-现在我们可以用这个 GLCall 做到很多事情。我们可以用它分别包裹我们的每一个 OpenGL 函数调用，这样一旦哪里出了问题就能立刻看到这些非常有用的错误信息。不过我们的宏实现非常简陋，它还有一些 bug ，比方说在 if 语句后面使用它将会只把代码的第一行划入 if 语句的作用范围，还有被包裹变量的生命周期等等问题。可以通过一些手段去解决这些 bug，这里就不展开讲了。
+现在我们可以用这个 `GLCall` 做到很多事情。我们可以用它分别包裹我们的每一个 OpenGL 函数调用，这样一旦哪里出了问题就能立刻看到这些非常有用的错误信息。不过我们的宏实现非常简陋，它还有一些 bug，比方说在 `if` 语句后面使用它将会只把代码的第一行划入 `if` 语句的作用范围，还有被包裹变量的生命周期等等问题。可以通过一些手段去解决这些 bug，这里就不展开讲了。
 
 ---
 
 ## 参考资料
 
 - [【双语】【TheCherno】OpenGL_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1Ni4y1o7Au/?spm_id_from=333.337.search-card.all.click&vd_source=b620703bd4c9a236a25ac8bf0c1f6f5c)
-

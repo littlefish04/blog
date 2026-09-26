@@ -66,6 +66,7 @@ description: 文章摘要，用于 SEO
 - 新增语言支持：在该脚本里追加 `hljs.registerLanguage`，**勿改 node_modules**（重装即丢）
 - 代码块正文配色（Typora GitHub 同款调色板，CSS 变量 `--gh-hl-*`）：`themes/Anatolo/source/css/github-content.css`；汇编 `meta`（`section`/`global` 等伪指令）与 `.preprocessor` 同组蓝色
 - 代码块右上角语言标签：`themes/Anatolo/src/scss/highlight.scss` 里按 figure class 用 `.code:after content` 定义（如 `&.asm/&.assembly/&.nasm → 'x86 Assembly'`）；新语言要在 `hljs.registerLanguage` 之外**同步补这里**，改后 `hexo generate` 会自动重编 bundle.css
+- 已验证可用的常用标识：C++ 用 ` ```cpp `（本站全站约定，C 代码也用 cpp）、GLSL 着色器代码用 ` ```glsl `（hljs 实例已含 glsl 语法，标签显示为 `OpenGL Shading Language`）；`hexo-util` 的 `highlight.js` 实例与 `scripts/` 里 `require('highlight.js')` 是同一个（`require('highlight.js')` 解析到全量构建，含 glsl）
 - ⚠️ 主题构建（`themes/Anatolo/includes/tasks/rollup.js`）已改为 node 直调本地 rollup，不再经 pnpm——本地 pnpm 11 在受限环境下报 `unable to open database file` 会拖垮整个 generate（模板 TypeError 连锁失败）
 - ⚠️ 改 `scripts/` 或渲染逻辑后，旧文章不会因增量 generate 重渲染，需 `hexo clean` 后再 generate 才全量生效
 - ⚠️ `hexo server` 运行期间会锁住 `themes/Anatolo/source/` 下的文件（无 FILE_SHARE_DELETE），AI 用 ReplaceFileW 式编辑会报 `Win32 32` 共享冲突，改文件前先让用户停掉 server
